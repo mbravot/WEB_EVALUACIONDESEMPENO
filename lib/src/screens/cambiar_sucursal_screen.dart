@@ -126,14 +126,15 @@ class _CambiarSucursalScreenState extends State<CambiarSucursalScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: AppTheme.primaryColor,
-        title: const Text(
+        backgroundColor: scheme.primary,
+        title: Text(
           "Cambiar Sucursal",
-          style: TextStyle(color: Colors.white),
+          style: TextStyle(color: scheme.onPrimary),
         ),
-        iconTheme: const IconThemeData(color: Colors.white),
+        iconTheme: IconThemeData(color: scheme.onPrimary),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -151,15 +152,15 @@ class _CambiarSucursalScreenState extends State<CambiarSucursalScreen> {
           setState(() => _isRefreshing = false);
         },
         child: _cargando
-          ? const Center(
+          ? Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  CircularProgressIndicator(color: AppTheme.primaryColor),
-                  SizedBox(height: 16),
+                  CircularProgressIndicator(color: scheme.primary),
+                  const SizedBox(height: 16),
                   Text(
                     'Cargando sucursales...',
-                    style: TextStyle(color: Colors.grey),
+                    style: TextStyle(color: scheme.onSurfaceVariant),
                   ),
                 ],
               ),
@@ -183,15 +184,15 @@ class _CambiarSucursalScreenState extends State<CambiarSucursalScreen> {
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
-                                color: Colors.grey[800],
+                                color: scheme.onSurface,
                               ),
                             ),
                             const SizedBox(height: 16),
                             if (_sucursales.isEmpty && !_cargando)
-                              const Center(
+                              Center(
                                 child: Text(
                                   'No hay sucursales disponibles',
-                                  style: TextStyle(color: Colors.grey),
+                                  style: TextStyle(color: scheme.onSurfaceVariant),
                                 ),
                               )
                             else
@@ -210,7 +211,7 @@ class _CambiarSucursalScreenState extends State<CambiarSucursalScreen> {
                                     .toList(),
                                 decoration: InputDecoration(
                                   filled: true,
-                                  fillColor: Colors.grey[50],
+                                  fillColor: scheme.surfaceContainerHighest,
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(8),
                                   ),
@@ -228,17 +229,17 @@ class _CambiarSucursalScreenState extends State<CambiarSucursalScreen> {
                     if (_mensajeError != null) ...[
                       const SizedBox(height: 16),
                       Card(
-                        color: Colors.red[50],
+                        color: scheme.errorContainer,
                         child: Padding(
                           padding: const EdgeInsets.all(16.0),
                           child: Row(
                             children: [
-                              const Icon(Icons.error_outline, color: Colors.red),
+                              Icon(Icons.error_outline, color: scheme.error),
                               const SizedBox(width: 8),
                               Expanded(
                                 child: Text(
                                   _mensajeError!,
-                                  style: TextStyle(color: Colors.red[700]),
+                                  style: TextStyle(color: scheme.onErrorContainer),
                                 ),
                               ),
                             ],

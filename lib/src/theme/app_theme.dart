@@ -111,8 +111,11 @@ class AppTheme {
       onSecondary: Colors.white,
       onSurface: textPrimaryColor,
       onBackground: textPrimaryColor,
+      onSurfaceVariant: textSecondaryColor,
       error: errorColor,
       onError: Colors.white,
+      errorContainer: const Color(0xFFFFDAD6),
+      onErrorContainer: const Color(0xFF410002),
     ),
     
     // Text Theme
@@ -273,8 +276,11 @@ class AppTheme {
       onSecondary: Colors.white,
       onSurface: Colors.white,
       onBackground: Colors.white,
+      onSurfaceVariant: Color(0xFFB0B0B0),
       error: errorColor,
       onError: Colors.white,
+      errorContainer: const Color(0xFF93000A),
+      onErrorContainer: const Color(0xFFFFDAD6),
     ),
     
     // Text Theme

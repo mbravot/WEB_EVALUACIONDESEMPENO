@@ -119,23 +119,23 @@ Widget build(BuildContext context) {
                         children: [
 
                           /// 🟢 Logo
-Container(
-  width: 110,
-  height: 110,
-  decoration: BoxDecoration(
-    shape: BoxShape.circle,
-    border: Border.all(
-      color: Colors.white.withOpacity(0.5),
-      width: 1.5,
-    ),
-  ),
-  child: ClipOval(
-    child: Image.asset(
-      'assets/images/avatar.png',
-      fit: BoxFit.cover, // 🔥 llena completamente
-    ),
-  ),
-),
+                              Container(
+                                width: 110,
+                                height: 110,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: Colors.white.withOpacity(0.5),
+                                    width: 1.5,
+                                  ),
+                                ),
+                                child: ClipOval(
+                                  child: Image.asset(
+                                    'assets/images/avatar.png',
+                                    fit: BoxFit.cover, // 🔥 llena completamente
+                                  ),
+                                ),
+                              ),
 
                           const SizedBox(height: 20),
 

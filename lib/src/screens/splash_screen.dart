@@ -20,8 +20,8 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _checkAuthStatus() async {
-    // Esperar un poco para mostrar la pantalla de splash
-    await Future.delayed(const Duration(seconds: 2));
+    // Breve pausa para mostrar el splash (en hot restart permite leer el storage)
+    await Future.delayed(const Duration(milliseconds: 600));
     
     if (!mounted) return;
 

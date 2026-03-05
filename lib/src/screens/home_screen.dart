@@ -6,6 +6,7 @@ import '../theme/app_theme.dart';
 import 'login_screen.dart';
 import 'cambiar_clave_screen.dart';
 import 'cambiar_sucursal_screen.dart';
+import 'evaluador_screen.dart';
 import '../widgets/sucursal_selector.dart';
 import '../widgets/main_scaffold.dart';
 
@@ -94,15 +95,16 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildSearchField() {
+    final scheme = Theme.of(context).colorScheme;
     return TextField(
       controller: _searchController,
-      decoration: const InputDecoration(
+      decoration: InputDecoration(
         hintText: 'Buscar en el menú...',
-        hintStyle: TextStyle(color: Colors.white70),
+        hintStyle: TextStyle(color: scheme.onSurfaceVariant),
         border: InputBorder.none,
-        prefixIcon: Icon(Icons.search, color: Colors.black54),
+        prefixIcon: Icon(Icons.search, color: scheme.onSurfaceVariant),
       ),
-      style: const TextStyle(color: Colors.black),
+      style: TextStyle(color: scheme.onSurface),
       onChanged: (value) {
         // No hacer nada aquí para evitar SnackBars molestos
       },
@@ -152,7 +154,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       // Botón de cerrar sesión
       IconButton(
-        icon: const Icon(Icons.logout, color: Colors.white),
+        icon: Icon(Icons.logout, color: Theme.of(context).colorScheme.onPrimary),
         onPressed: () => _confirmarCerrarSesion(context, authProvider),
       ),
     ];
@@ -195,23 +197,24 @@ class _HomeScreenState extends State<HomeScreen> {
                         color: AppTheme.primaryColor,
                       ),
                       const SizedBox(width: 12),
-                      const Expanded(
+                      Expanded(
                         child: Text(
                           'Bienvenido a tu Dashboard',
                           style: TextStyle(
                             fontSize: 24,
                             fontWeight: FontWeight.bold,
+                            color: Theme.of(context).colorScheme.onSurface,
                           ),
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 12),
-                  const Text(
+                  Text(
                     'Esta es tu aplicación base. Aquí puedes agregar las funcionalidades específicas que necesites.',
                     style: TextStyle(
                       fontSize: 16,
-                      color: Colors.grey,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                   ),
                 ],
@@ -280,11 +283,12 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(height: 32),
           
           // Sección de acciones rápidas
-          const Text(
+          Text(
             'Acciones Rápidas',
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
+              color: Theme.of(context).colorScheme.onSurface,
             ),
           ),
           const SizedBox(height: 16),
@@ -383,9 +387,9 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 4),
             Text(
               title,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
-                color: Colors.grey,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
               textAlign: TextAlign.center,
             ),
@@ -417,9 +421,10 @@ class _HomeScreenState extends State<HomeScreen> {
               const SizedBox(height: 8),
               Text(
                 title,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -454,31 +459,32 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildDrawer(BuildContext context, AuthProvider authProvider, ThemeProvider themeProvider) {
+    final scheme = Theme.of(context).colorScheme;
     return Drawer(
       child: ListView(
         padding: EdgeInsets.zero,
         children: [
           DrawerHeader(
             decoration: BoxDecoration(
-              color: AppTheme.primaryColor,
+              color: scheme.primary,
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const CircleAvatar(
+                CircleAvatar(
                   radius: 30,
-                  backgroundColor: Colors.white,
+                  backgroundColor: scheme.onPrimary,
                   child: Icon(
                     Icons.person,
                     size: 35,
-                    color: AppTheme.primaryColor,
+                    color: scheme.primary,
                   ),
                 ),
                 const SizedBox(height: 10),
                 Text(
                   authProvider.userData?['nombre'] ?? 'Usuario',
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: scheme.onPrimary,
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                   ),
@@ -486,13 +492,24 @@ class _HomeScreenState extends State<HomeScreen> {
                 const SizedBox(height: 4),
                 Text(
                   'Sucursal: ${authProvider.userData?['nombre_sucursal'] ?? 'No especificada'}',
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: scheme.onPrimary,
                     fontSize: 14,
                   ),
                 ),
               ],
             ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.assignment, color: AppTheme.primaryColor),
+            title: const Text('Mis Evaluaciones'),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const EvaluadorScreen()),
+              );
+            },
           ),
           ListTile(
             leading: const Icon(Icons.business, color: AppTheme.primaryColor),

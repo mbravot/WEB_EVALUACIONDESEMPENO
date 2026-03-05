@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'src/providers/auth_provider.dart';
 import 'src/providers/theme_provider.dart';
-import 'src/app.dart';
+import 'src/screens/splash_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -23,7 +23,7 @@ class MyApp extends StatelessWidget {
           return MaterialApp(
             title: 'Evaluación de Desempeño La Hornilla',
             theme: themeProvider.currentTheme,
-            home: const App(),
+            home: const SplashScreen(),
             debugShowCheckedModeBanner: false,
           );
         },

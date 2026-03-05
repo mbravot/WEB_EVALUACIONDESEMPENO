@@ -3,19 +3,19 @@ import 'dart:developer' as developer;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import '../config/api_config.dart';
 
 class AuthService {
-  final String baseUrl = 'http://192.168.1.196:5000/api';
   final storage = const FlutterSecureStorage();
 
   //Login
   Future<Map<String, dynamic>> login(String usuario, String password) async {
     developer.log('Intentando login con usuario: $usuario');
-    developer.log('URL de la API: $baseUrl/auth/login');
+    developer.log('URL de la API: ${ApiConfig.baseUrl}/auth/login');
     
     try {
       final response = await http.post(
-        Uri.parse('$baseUrl/auth/login'),
+        Uri.parse('${ApiConfig.baseUrl}/auth/login'),
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
@@ -92,7 +92,7 @@ class AuthService {
       if (token == null) throw Exception('No autorizado');
 
       final response = await http.post(
-        Uri.parse('$baseUrl/auth/cambiar-clave'),
+        Uri.parse('${ApiConfig.baseUrl}/auth/cambiar-clave'),
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
@@ -130,7 +130,7 @@ class AuthService {
       if (token == null) throw Exception('No autorizado');
 
       final response = await http.get(
-        Uri.parse('$baseUrl/sucursales/'),
+        Uri.parse('${ApiConfig.baseUrl}/sucursales/'),
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
@@ -163,7 +163,7 @@ class AuthService {
       if (token == null) throw Exception('No autorizado');
 
       final response = await http.post(
-        Uri.parse('$baseUrl/auth/cambiar-sucursal'),
+        Uri.parse('${ApiConfig.baseUrl}/auth/cambiar-sucursal'),
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',

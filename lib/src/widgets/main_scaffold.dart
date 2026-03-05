@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/theme_provider.dart';
 import '../theme/app_theme.dart';
+import '../screens/login_screen.dart';
 import 'sucursal_selector.dart';
 import 'user_info.dart';
 
@@ -24,12 +25,64 @@ class MainScaffold extends StatelessWidget {
     this.onRefresh,
   }) : super(key: key);
 
+  Future<void> _confirmarCerrarSesion(BuildContext context) async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final scheme = Theme.of(context).colorScheme;
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: scheme.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        title: Row(
+          children: [
+            Icon(Icons.logout, color: scheme.error, size: 28),
+            const SizedBox(width: 8),
+            Text('Cerrar Sesión', style: TextStyle(color: scheme.onSurface)),
+          ],
+        ),
+        content: Text(
+          '¿Estás seguro de que quieres cerrar sesión?',
+          style: TextStyle(fontSize: 16, color: scheme.onSurface),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text('Cancelar', style: TextStyle(fontSize: 16, color: scheme.primary)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: scheme.error,
+              foregroundColor: scheme.onError,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: const Text('Cerrar Sesión', style: TextStyle(fontSize: 16)),
+          ),
+        ],
+      ),
+    );
+    if (result == true && context.mounted) {
+      await authProvider.logout();
+      if (context.mounted) {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const LoginScreen()),
+          (route) => false,
+        );
+      }
+    }
+  }
+
   void _handleRefresh(BuildContext context) async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    
+    final scheme = Theme.of(context).colorScheme;
+
     // Mostrar indicador de carga
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
+      SnackBar(
         content: Row(
           children: [
             SizedBox(
@@ -37,15 +90,15 @@ class MainScaffold extends StatelessWidget {
               height: 16,
               child: CircularProgressIndicator(
                 strokeWidth: 2,
-                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                valueColor: AlwaysStoppedAnimation<Color>(scheme.onPrimary),
               ),
             ),
-            SizedBox(width: 8),
-            Text('Actualizando...'),
+            const SizedBox(width: 8),
+            Text('Actualizando...', style: TextStyle(color: scheme.onPrimary)),
           ],
         ),
-        duration: Duration(seconds: 1),
-        backgroundColor: AppTheme.primaryColor,
+        duration: const Duration(seconds: 1),
+        backgroundColor: scheme.primary,
       ),
     );
 
@@ -61,16 +114,17 @@ class MainScaffold extends StatelessWidget {
 
       // Mostrar mensaje de éxito
       if (context.mounted) {
+        final s = Theme.of(context).colorScheme;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Row(
               children: [
-                Icon(Icons.check_circle, color: Colors.white),
-                SizedBox(width: 8),
-                Text('Página actualizada'),
+                Icon(Icons.check_circle, color: s.onPrimary),
+                const SizedBox(width: 8),
+                Text('Página actualizada', style: TextStyle(color: s.onPrimary)),
               ],
             ),
-            duration: Duration(seconds: 2),
+            duration: const Duration(seconds: 2),
             backgroundColor: AppTheme.successColor,
           ),
         );
@@ -78,17 +132,18 @@ class MainScaffold extends StatelessWidget {
     } catch (e) {
       // Mostrar mensaje de error
       if (context.mounted) {
+        final s = Theme.of(context).colorScheme;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
               children: [
-                const Icon(Icons.error, color: Colors.white),
+                Icon(Icons.error, color: s.onError),
                 const SizedBox(width: 8),
-                Text('Error al actualizar: $e'),
+                Text('Error al actualizar: $e', style: TextStyle(color: s.onError)),
               ],
             ),
             duration: const Duration(seconds: 3),
-            backgroundColor: Colors.red,
+            backgroundColor: s.error,
           ),
         );
       }
@@ -116,11 +171,8 @@ class MainScaffold extends StatelessWidget {
             onPressed: () => themeProvider.toggleTheme(),
           ),
           IconButton(
-            icon: const Icon(Icons.logout, color: Colors.white),
-            onPressed: () {
-              // Aquí puedes poner tu lógica de logout global
-              Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
-            },
+            icon: Icon(Icons.logout, color: Theme.of(context).colorScheme.onPrimary),
+            onPressed: () => _confirmarCerrarSesion(context),
           ),
         ],
       ),
