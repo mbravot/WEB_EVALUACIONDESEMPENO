@@ -38,6 +38,36 @@ class EvaluadorService {
     }
   }
 
+  /// GET /api/evaluaciones
+  /// Requiere JWT. Para administradores/RRHH: devuelve todas las evaluaciones (sin filtrar por usuario).
+  /// Distinto a getMisEvaluaciones(), que solo devuelve las del usuario logueado.
+  /// Formato igual que mis-evaluaciones. Orden: fecha DESC, id DESC.
+  static Future<List<Map<String, dynamic>>> getTodasEvaluaciones() async {
+    final token = await _authService.getToken();
+    if (token == null) throw Exception('No autorizado');
+
+    final response = await http.get(
+      Uri.parse('${ApiConfig.baseUrl}/evaluaciones'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    developer.log('GET evaluaciones: ${response.statusCode}');
+
+    if (response.statusCode == 200) {
+      final List<dynamic> data = json.decode(response.body);
+      return data.map((e) => Map<String, dynamic>.from(e)).toList();
+    }
+    final body = response.body;
+    developer.log('Error evaluaciones: $body');
+    throw Exception(
+      body.isNotEmpty ? body : 'Error al cargar evaluaciones (${response.statusCode})',
+    );
+  }
+
   /// GET /api/evaluador/mis-evaluaciones
   /// Requiere JWT. Devuelve la lista de evaluaciones realizadas por el usuario logueado.
   static Future<List<Map<String, dynamic>>> getMisEvaluaciones() async {

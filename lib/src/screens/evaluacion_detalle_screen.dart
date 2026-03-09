@@ -9,16 +9,19 @@ import 'crear_evaluacion_screen.dart';
 
 /// Pantalla para ver una evaluación ya realizada o para realizar una evaluación pendiente.
 /// Recibe los datos del colaborador y el estado [realizada].
-/// Si [realizada], carga el detalle desde GET /api/evaluador/mis-evaluaciones.
-/// Misma estructura visual que CrearEvaluacionScreen (secciones I-IX).
+/// Si [realizada] y [detallePrecargado] es null, carga el detalle desde GET /api/evaluador/mis-evaluaciones.
+/// Si [detallePrecargado] no es null (p. ej. desde GET /api/evaluaciones), se usa directamente.
 class EvaluacionDetalleScreen extends StatefulWidget {
   final Map<String, dynamic> evaluacion;
   final bool realizada;
+  /// Si se pasa, no se llama a mis-evaluaciones; se usa este mapa como detalle (p. ej. desde "Todas las evaluaciones").
+  final Map<String, dynamic>? detallePrecargado;
 
   const EvaluacionDetalleScreen({
     super.key,
     required this.evaluacion,
     required this.realizada,
+    this.detallePrecargado,
   });
 
   @override
@@ -33,7 +36,13 @@ class _EvaluacionDetalleScreenState extends State<EvaluacionDetalleScreen> {
   @override
   void initState() {
     super.initState();
-    if (widget.realizada) _cargarDetalle();
+    if (widget.realizada) {
+      if (widget.detallePrecargado != null) {
+        _detalle = widget.detallePrecargado;
+      } else {
+        _cargarDetalle();
+      }
+    }
   }
 
   Future<void> _imprimirPdf({

@@ -3,6 +3,7 @@ import '../theme/app_theme.dart';
 import '../widgets/main_scaffold.dart';
 import '../services/funciones_service.dart';
 import '../services/cargos_service.dart';
+import '../services/permisos_service.dart';
 
 /// Pantalla: listado de cargos con buscador; al tocar un cargo se despliegan sus funciones.
 /// Si un cargo no tiene funciones, permite agregar. Estilo coherente con evaluador_screen.
@@ -18,6 +19,8 @@ class _FuncionesScreenState extends State<FuncionesScreen> {
   bool _cargando = true;
   String? _error;
   final TextEditingController _busquedaController = TextEditingController();
+  /// null = comprobando permiso, false = sin permiso (id 7), true = permitido.
+  bool? _permisoOk;
 
   /// Caché: id_cargo -> lista de funciones asignadas.
   final Map<int, List<Map<String, dynamic>>> _funcionesPorCargo = {};
@@ -31,8 +34,15 @@ class _FuncionesScreenState extends State<FuncionesScreen> {
   @override
   void initState() {
     super.initState();
-    _cargarCargos();
     _busquedaController.addListener(() => setState(() {}));
+    _comprobarPermisoYcargar();
+  }
+
+  Future<void> _comprobarPermisoYcargar() async {
+    final permitido = await PermisosService.getAccesoPantalla();
+    if (!mounted) return;
+    setState(() => _permisoOk = permitido);
+    if (permitido) _cargarCargos();
   }
 
   @override
@@ -674,20 +684,64 @@ class _FuncionesScreenState extends State<FuncionesScreen> {
     final scheme = Theme.of(context).colorScheme;
     final filtrados = _cargosFiltrados;
 
+    if (_permisoOk == false) {
+      return MainScaffold(
+        title: 'Funciones por cargo',
+        drawer: null,
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Card(
+              elevation: 2,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.lock_outline, size: 64, color: scheme.error),
+                    const SizedBox(height: 16),
+                    Text(
+                      'No tiene permiso para acceder a esta pantalla.',
+                      style: TextStyle(fontSize: 16, color: scheme.onSurface),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 24),
+                    FilledButton.icon(
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: const Icon(Icons.arrow_back, size: 20),
+                      label: const Text('Volver'),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppTheme.primaryColor,
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
     return MainScaffold(
       title: 'Funciones por cargo',
       drawer: null,
       body: RefreshIndicator(
         onRefresh: _cargarCargos,
         color: scheme.primary,
-        child: _cargando
+        child: (_permisoOk != true || _cargando)
             ? Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     CircularProgressIndicator(color: scheme.primary),
                     const SizedBox(height: 16),
-                    Text('Cargando cargos...', style: TextStyle(color: scheme.onSurfaceVariant)),
+                    Text(
+                      _permisoOk == null ? 'Comprobando permiso...' : 'Cargando cargos...',
+                      style: TextStyle(color: scheme.onSurfaceVariant),
+                    ),
                   ],
                 ),
               )

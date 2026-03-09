@@ -141,7 +141,7 @@ Widget build(BuildContext context) {
 
                           /// 📝 Título
                           const Text(
-                            "Bienvenido",
+                            "Evaluación de Desempeño LH",
                             style: TextStyle(
                               fontSize: 22,
                               fontWeight: FontWeight.bold,

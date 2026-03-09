@@ -7,8 +7,10 @@ import 'login_screen.dart';
 import 'cambiar_clave_screen.dart';
 import 'cambiar_sucursal_screen.dart';
 import 'evaluador_screen.dart';
+import 'evaluaciones_screen.dart';
 import 'funciones_screen.dart';
 import 'competencias_screen.dart';
+import '../services/permisos_service.dart';
 import '../widgets/sucursal_selector.dart';
 import '../widgets/main_scaffold.dart';
 
@@ -22,6 +24,19 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController _searchController = TextEditingController();
   bool _isSearching = false;
+  /// Permiso id=7 (usuario_dim_permiso): acceso a Consultar evaluaciones, Funciones del cargo, Competencias por cargo.
+  bool _accesoPantallaPermitido = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _cargarPermisoPantalla();
+  }
+
+  Future<void> _cargarPermisoPantalla() async {
+    final permitido = await PermisosService.getAccesoPantalla();
+    if (mounted) setState(() => _accesoPantallaPermitido = permitido);
+  }
 
   @override
   void dispose() {
@@ -513,28 +528,41 @@ class _HomeScreenState extends State<HomeScreen> {
               );
             },
           ),
-          ListTile(
-            leading: const Icon(Icons.work_outline, color: AppTheme.primaryColor),
-            title: const Text('Funciones del cargo'),
-            onTap: () {
-              Navigator.pop(context);
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const FuncionesScreen()),
-              );
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.psychology_outlined, color: AppTheme.primaryColor),
-            title: const Text('Competencias por cargo'),
-            onTap: () {
-              Navigator.pop(context);
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const CompetenciasScreen()),
-              );
-            },
-          ),
+          if (_accesoPantallaPermitido) ...[
+            ListTile(
+              leading: const Icon(Icons.assignment_ind, color: AppTheme.primaryColor),
+              title: const Text('Consultar evaluaciones'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const EvaluacionesScreen()),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.work_outline, color: AppTheme.primaryColor),
+              title: const Text('Funciones del cargo'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const FuncionesScreen()),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.psychology_outlined, color: AppTheme.primaryColor),
+              title: const Text('Competencias por cargo'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const CompetenciasScreen()),
+                );
+              },
+            ),
+          ],
           ListTile(
             leading: const Icon(Icons.business, color: AppTheme.primaryColor),
             title: const Text('Cambiar Sucursal'),

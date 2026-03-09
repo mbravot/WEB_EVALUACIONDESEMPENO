@@ -197,6 +197,13 @@ flutter build web
 flutter build web --release --web-renderer html
 ```
 
+## 🌐 Despliegue a Firebase
+
+**El despliegue debe realizarse con la cuenta:** **mbravo@lahornilla.cl**
+
+Pasos resumidos: build web → `firebase login` (con esa cuenta) → `firebase use --add` → `firebase deploy --only hosting`.  
+Instrucciones completas en **[DEPLOY.md](DEPLOY.md)**.
+
 ## 🔄 Flujo de Autenticación
 
 1. **Splash Screen** → Verifica token existente
