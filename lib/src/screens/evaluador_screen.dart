@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../services/evaluador_service.dart';
 import '../widgets/main_scaffold.dart';
+import 'evaluacion_detalle_screen.dart';
 
 class EvaluadorScreen extends StatefulWidget {
   const EvaluadorScreen({super.key});
@@ -14,11 +15,39 @@ class _EvaluadorScreenState extends State<EvaluadorScreen> {
   List<Map<String, dynamic>> _evaluaciones = [];
   bool _cargando = true;
   String? _mensajeError;
+  final TextEditingController _busquedaController = TextEditingController();
+  final FocusNode _busquedaFocus = FocusNode();
 
   @override
   void initState() {
     super.initState();
     _cargarEvaluaciones();
+    _busquedaController.addListener(() => setState(() {}));
+  }
+
+  @override
+  void dispose() {
+    _busquedaController.dispose();
+    _busquedaFocus.dispose();
+    super.dispose();
+  }
+
+  /// Filtra colaboradores por nombre, correo, cargo, sucursal o nivel.
+  List<Map<String, dynamic>> get _evaluacionesFiltradas {
+    final q = _busquedaController.text.trim().toLowerCase();
+    if (q.isEmpty) return _evaluaciones;
+    return _evaluaciones.where((e) {
+      final nombre = (e['evaluado_nombre']?.toString() ?? '').toLowerCase();
+      final correo = (e['correo_dim']?.toString() ?? '').toLowerCase();
+      final cargo = ((e['cargo'] ?? e['cargo_evaluado'])?.toString() ?? '').toLowerCase();
+      final sucursal = ((e['sucursal'] ?? e['sucursal_nombre'])?.toString() ?? '').toLowerCase();
+      final nivel = ((e['nivel'] ?? e['nivel_nombre'])?.toString() ?? '').toLowerCase();
+      return nombre.contains(q) ||
+          correo.contains(q) ||
+          cargo.contains(q) ||
+          sucursal.contains(q) ||
+          nivel.contains(q);
+    }).toList();
   }
 
   Future<void> _cargarEvaluaciones() async {
@@ -104,6 +133,45 @@ class _EvaluadorScreenState extends State<EvaluadorScreen> {
                       ),
                       const SizedBox(height: 16),
                     ],
+                    // Buscador de colaboradores
+                    if (!_cargando && _evaluaciones.isNotEmpty) ...[
+                      TextField(
+                        controller: _busquedaController,
+                        focusNode: _busquedaFocus,
+                        decoration: InputDecoration(
+                          hintText: 'Buscar por nombre, correo, cargo, sucursal...',
+                          prefixIcon: Icon(Icons.search, color: scheme.onSurfaceVariant),
+                          suffixIcon: _busquedaController.text.isNotEmpty
+                              ? IconButton(
+                                  icon: Icon(Icons.clear, color: scheme.onSurfaceVariant),
+                                  onPressed: () {
+                                    _busquedaController.clear();
+                                  },
+                                )
+                              : null,
+                          filled: true,
+                          fillColor: scheme.surfaceContainerHighest.withOpacity(0.5),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        ),
+                        onChanged: (_) => setState(() {}),
+                      ),
+                      if (_busquedaController.text.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          '${_evaluacionesFiltradas.length} de ${_evaluaciones.length} colaboradores',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: scheme.onSurfaceVariant,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                      ] else
+                        const SizedBox(height: 16),
+                    ],
                     if (_evaluaciones.isEmpty && _mensajeError == null)
                       Card(
                         elevation: 2,
@@ -128,8 +196,38 @@ class _EvaluadorScreenState extends State<EvaluadorScreen> {
                           ),
                         ),
                       )
+                    else if (_evaluacionesFiltradas.isEmpty)
+                      Card(
+                        elevation: 2,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(24),
+                          child: Row(
+                            children: [
+                              Icon(Icons.search_off, size: 40, color: scheme.onSurfaceVariant),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Text(
+                                  'Ningún colaborador coincide con la búsqueda',
+                                  style: TextStyle(
+                                    fontSize: 15,
+                                    color: scheme.onSurfaceVariant,
+                                  ),
+                                ),
+                              ),
+                              TextButton.icon(
+                                onPressed: () => _busquedaController.clear(),
+                                icon: const Icon(Icons.clear_all, size: 20),
+                                label: const Text('Limpiar'),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
                     else
-                      ..._evaluaciones.map((e) => _buildCard(context, e)),
+                      ..._evaluacionesFiltradas.map((e) => _buildCard(context, e)),
                   ],
                 ),
               ),
@@ -262,6 +360,40 @@ class _EvaluadorScreenState extends State<EvaluadorScreen> {
                 ],
               ),
             ],
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: () async {
+                  final actualizado = await Navigator.of(context).push<bool>(
+                    MaterialPageRoute(
+                      builder: (context) => EvaluacionDetalleScreen(
+                        evaluacion: e,
+                        realizada: realizada,
+                      ),
+                    ),
+                  );
+                  if (actualizado == true && context.mounted) {
+                    _cargarEvaluaciones();
+                  }
+                },
+                icon: Icon(
+                  realizada ? Icons.visibility_outlined : Icons.edit_note,
+                  size: 20,
+                ),
+                label: Text(realizada ? 'Ver evaluación' : 'Realizar evaluación'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: realizada
+                      ? AppTheme.successColor
+                      : AppTheme.primaryColor,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ),
+            ),
           ],
         ),
       ),

@@ -7,6 +7,8 @@ import 'login_screen.dart';
 import 'cambiar_clave_screen.dart';
 import 'cambiar_sucursal_screen.dart';
 import 'evaluador_screen.dart';
+import 'funciones_screen.dart';
+import 'competencias_screen.dart';
 import '../widgets/sucursal_selector.dart';
 import '../widgets/main_scaffold.dart';
 
@@ -508,6 +510,28 @@ class _HomeScreenState extends State<HomeScreen> {
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (_) => const EvaluadorScreen()),
+              );
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.work_outline, color: AppTheme.primaryColor),
+            title: const Text('Funciones del cargo'),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const FuncionesScreen()),
+              );
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.psychology_outlined, color: AppTheme.primaryColor),
+            title: const Text('Competencias por cargo'),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const CompetenciasScreen()),
               );
             },
           ),

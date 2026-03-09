@@ -4,8 +4,9 @@ class ApiConfig {
   ApiConfig._();
 
   /// URL base de la API (sin barra final).
-  /// Ejemplo: https://mi-servidor.com/api o http://192.168.1.196:5000/api
-  static const String baseUrl = 'http://192.168.1.196:5000/api';
+  /// Producción: https://api-evaluaciondesempeno-927498545444.us-central1.run.app
+  //static const String baseUrl = 'http://192.168.1.196:5000/api';
+  static const String baseUrl = 'https://api-evaluaciondesempeno-927498545444.us-central1.run.app/api';
 
   // Opcional: si más adelante usas .env:
   // static String get baseUrl => dotenv.env['API_URL'] ?? 'http://192.168.1.196:5000/api';

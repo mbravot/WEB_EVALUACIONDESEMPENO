@@ -167,11 +167,11 @@ class MainScaffold extends StatelessWidget {
             onPressed: () => _handleRefresh(context),
           ),
           IconButton(
-            icon: Icon(themeProvider.isDarkMode ? Icons.light_mode : Icons.dark_mode),
+            icon: Icon(themeProvider.isDarkMode ? Icons.light_mode : Icons.dark_mode, color: Colors.yellow[700]),
             onPressed: () => themeProvider.toggleTheme(),
           ),
           IconButton(
-            icon: Icon(Icons.logout, color: Theme.of(context).colorScheme.onPrimary),
+            icon: Icon(Icons.logout, color: Colors.red),
             onPressed: () => _confirmarCerrarSesion(context),
           ),
         ],
