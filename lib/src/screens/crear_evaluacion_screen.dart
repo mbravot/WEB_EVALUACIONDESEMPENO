@@ -22,10 +22,13 @@ double rentasDesdePuntaje(double puntaje) {
 /// funciones 70%, competencias 30%, comentarios, resultados, plan de trabajo, firmas).
 class CrearEvaluacionScreen extends StatefulWidget {
   final Map<String, dynamic> evaluacion;
+  /// Si se pasa, la pantalla está en modo edición (prellenar y enviar PUT).
+  final String? idEvaluacion;
 
   const CrearEvaluacionScreen({
     super.key,
     required this.evaluacion,
+    this.idEvaluacion,
   });
 
   @override
@@ -54,10 +57,41 @@ class _CrearEvaluacionScreenState extends State<CrearEvaluacionScreen> {
   String? _cargoEvaluadorNombre;
   String? _unidadNombre;
 
+  bool get _esEdicion => widget.idEvaluacion != null && widget.idEvaluacion!.isNotEmpty;
+
   @override
   void initState() {
     super.initState();
-    _planTrabajo.add({'objetivo': '', 'accionesesperadas': '', 'seguimiento': '', 'fechalimitetermino': ''});
+    _planTrabajo.clear();
+    if (_esEdicion && widget.evaluacion['plan_trabajo'] is List) {
+      final pt = widget.evaluacion['plan_trabajo'] as List;
+      for (final p in pt) {
+        final m = p is Map ? Map<String, dynamic>.from(p as Map) : <String, dynamic>{};
+        _planTrabajo.add({
+          'objetivo': m['objetivo']?.toString() ?? '',
+          'accionesesperadas': m['accionesesperadas']?.toString() ?? '',
+          'seguimiento': m['seguimiento']?.toString() ?? '',
+          'fechalimitetermino': m['fechalimitetermino']?.toString() ?? '',
+        });
+      }
+    }
+    if (_planTrabajo.isEmpty) {
+      _planTrabajo.add({'objetivo': '', 'accionesesperadas': '', 'seguimiento': '', 'fechalimitetermino': ''});
+    }
+    if (_esEdicion) {
+      final fStr = widget.evaluacion['fecha']?.toString() ?? '';
+      if (fStr.isNotEmpty) {
+        final parts = fStr.split(RegExp(r'[-/]'));
+        if (parts.length >= 3) {
+          final y = int.tryParse(parts[0]);
+          final m = int.tryParse(parts[1]);
+          final d = int.tryParse(parts[2]);
+          if (y != null && m != null && d != null) _fecha = DateTime(y, m, d);
+        }
+      }
+      _comentarioEvalController.text = widget.evaluacion['comentarioevaluador']?.toString() ?? '';
+      _comentarioEvaladoController.text = widget.evaluacion['comentarioevaluado']?.toString() ?? '';
+    }
     _cargarCargosYCargarFuncionesYCompetencias();
     AuthService().getCurrentUser().then((u) {
       if (mounted) setState(() => _user = u);
@@ -117,6 +151,36 @@ class _CrearEvaluacionScreenState extends State<CrearEvaluacionScreen> {
 
     if (idCargoEvalado == null) {
       setState(() {
+        _cargandoFunciones = false;
+        _cargandoCompetencias = false;
+      });
+      return;
+    }
+
+    if (_esEdicion && widget.evaluacion['funciones'] is List && widget.evaluacion['competencias'] is List) {
+      final funcRaw = widget.evaluacion['funciones'] as List;
+      final compRaw = widget.evaluacion['competencias'] as List;
+      setState(() {
+        _funciones = funcRaw.map((e) {
+          final m = e is Map ? Map<String, dynamic>.from(e as Map) : <String, dynamic>{};
+          final nota = m['nota'];
+          final notaInt = nota is int ? nota : (nota is num ? nota.toInt() : int.tryParse(nota?.toString() ?? ''));
+          return {
+            'id_cargofuncion': m['id_cargofuncion'] ?? m['id'],
+            'nombre': m['nombre_funcion']?.toString() ?? m['nombre']?.toString() ?? 'Función',
+            'nota': notaInt,
+          };
+        }).toList();
+        _competencias = compRaw.map((e) {
+          final m = e is Map ? Map<String, dynamic>.from(e as Map) : <String, dynamic>{};
+          final nota = m['nota'];
+          final notaInt = nota is int ? nota : (nota is num ? nota.toInt() : int.tryParse(nota?.toString() ?? ''));
+          return {
+            'id_competencianivel': m['id_competencianivel'] ?? m['id'],
+            'nombre': m['nombre_competencia']?.toString() ?? m['nombre']?.toString() ?? 'Competencia',
+            'nota': notaInt,
+          };
+        }).toList();
         _cargandoFunciones = false;
         _cargandoCompetencias = false;
       });
@@ -274,15 +338,27 @@ class _CrearEvaluacionScreenState extends State<CrearEvaluacionScreen> {
     });
 
     try {
-      await EvaluadorService.crearEvaluacion(body);
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Evaluación creada correctamente'),
-          backgroundColor: AppTheme.successColor,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      if (_esEdicion) {
+        await EvaluadorService.actualizarEvaluacion(widget.idEvaluacion!, body);
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Evaluación actualizada correctamente'),
+            backgroundColor: AppTheme.successColor,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      } else {
+        await EvaluadorService.crearEvaluacion(body);
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Evaluación creada correctamente'),
+            backgroundColor: AppTheme.successColor,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
       Navigator.of(context).pop(true);
     } catch (ex) {
       if (!mounted) return;
@@ -306,7 +382,7 @@ class _CrearEvaluacionScreenState extends State<CrearEvaluacionScreen> {
     final evaluadorCargo = _cargoEvaluadorNombre ?? e['cargo_evaluador']?.toString() ?? e['cargo_evaluador_nombre']?.toString() ?? '—';
 
     return MainScaffold(
-      title: 'Evaluación de desempeño',
+      title: _esEdicion ? 'Editar evaluación' : 'Evaluación de desempeño',
       drawer: null,
       body: Form(
             key: _formKey,
@@ -352,7 +428,7 @@ class _CrearEvaluacionScreenState extends State<CrearEvaluacionScreen> {
                             child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                           )
                         : const Icon(Icons.save_outlined, size: 22),
-                    label: Text(_enviando ? 'Guardando...' : 'Guardar evaluación'),
+                    label: Text(_enviando ? 'Guardando...' : (_esEdicion ? 'Actualizar evaluación' : 'Guardar evaluación')),
                     style: FilledButton.styleFrom(
                       backgroundColor: AppTheme.primaryColor,
                       foregroundColor: Colors.white,
@@ -510,7 +586,6 @@ class _CrearEvaluacionScreenState extends State<CrearEvaluacionScreen> {
               border: TableBorder.all(color: scheme.outlineVariant),
               children: const [
                 TableRow(
-                  decoration: BoxDecoration(color: Color(0xFFE8F5E9)),
                   children: [
                     Padding(padding: EdgeInsets.all(8), child: Text('1', style: TextStyle(fontWeight: FontWeight.bold))),
                     Padding(padding: EdgeInsets.all(8), child: Text('Bajo Rendimiento - No cumple con lo esperado o presenta dificultades.')),

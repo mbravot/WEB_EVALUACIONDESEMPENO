@@ -143,4 +143,59 @@ class EvaluadorService {
       respBody.isNotEmpty ? respBody : 'Error al crear evaluación (${response.statusCode})',
     );
   }
+
+  /// PUT o PATCH /api/evaluador/evaluaciones/<id_evaluacion>
+  /// Solo puede editar el usuario que es id_usuarioevaluador de esa evaluación.
+  /// Body (todos opcionales): fecha, comentarioevaluador, comentarioevaluado, notafinal, factorbono,
+  /// firmaevaluador, firmaevaluado, id_sucursal. Si envías competencias/funciones/plan_trabajo
+  /// se reemplazan los actuales (mismo formato que al crear).
+  /// 200: { "id_evaluacion": "...", "mensaje": "Evaluación actualizada correctamente" }. 404: no existe o sin permiso.
+  static Future<void> actualizarEvaluacion(String idEvaluacion, Map<String, dynamic> body) async {
+    final token = await _authService.getToken();
+    if (token == null) throw Exception('No autorizado');
+
+    final response = await http.put(
+      Uri.parse('${ApiConfig.baseUrl}/evaluador/evaluaciones/$idEvaluacion'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: json.encode(body),
+    );
+
+    developer.log('PUT evaluador/evaluaciones/$idEvaluacion: ${response.statusCode}');
+
+    if (response.statusCode == 200 || response.statusCode == 204) return;
+    final respBody = response.body;
+    developer.log('Error actualizar evaluación: $respBody');
+    throw Exception(
+      respBody.isNotEmpty ? respBody : 'Error al actualizar evaluación (${response.statusCode})',
+    );
+  }
+
+  /// DELETE /api/evaluador/evaluaciones/<id_evaluacion>
+  /// Solo puede borrar el usuario que es id_usuarioevaluador. 200: { "mensaje": "Evaluación eliminada correctamente" }. 404: no existe o sin permiso.
+  static Future<void> eliminarEvaluacion(String idEvaluacion) async {
+    final token = await _authService.getToken();
+    if (token == null) throw Exception('No autorizado');
+
+    final response = await http.delete(
+      Uri.parse('${ApiConfig.baseUrl}/evaluador/evaluaciones/$idEvaluacion'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    developer.log('DELETE evaluador/evaluaciones/$idEvaluacion: ${response.statusCode}');
+
+    if (response.statusCode == 200 || response.statusCode == 204) return;
+    final respBody = response.body;
+    developer.log('Error eliminar evaluación: $respBody');
+    throw Exception(
+      respBody.isNotEmpty ? respBody : 'Error al eliminar evaluación (${response.statusCode})',
+    );
+  }
 }

@@ -68,6 +68,79 @@ class _EvaluacionDetalleScreenState extends State<EvaluacionDetalleScreen> {
     }
   }
 
+  Future<void> _editarEvaluacion() async {
+    if (_detalle == null) return;
+    final actualizado = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (context) => CrearEvaluacionScreen(
+          evaluacion: _detalle!,
+          idEvaluacion: _detalle!['id_evaluacion']?.toString(),
+        ),
+      ),
+    );
+    if (actualizado == true && mounted) {
+      _cargarDetalle();
+    }
+  }
+
+  Future<void> _confirmarEliminar() async {
+    if (_detalle == null) return;
+    final id = _detalle!['id_evaluacion']?.toString();
+    if (id == null || id.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No se puede eliminar: falta identificador de la evaluación'),
+          backgroundColor: AppTheme.errorColor,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+    final confirmado = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Eliminar evaluación'),
+        content: const Text(
+          '¿Está seguro de que desea eliminar esta evaluación? Esta acción no se puede deshacer.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: FilledButton.styleFrom(backgroundColor: AppTheme.errorColor),
+            child: const Text('Eliminar'),
+          ),
+        ],
+      ),
+    );
+    if (confirmado != true || !mounted) return;
+    try {
+      await EvaluadorService.eliminarEvaluacion(id);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Evaluación eliminada'),
+          backgroundColor: AppTheme.successColor,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      Navigator.of(context).pop(true);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceFirst('Exception: ', '')),
+          backgroundColor: AppTheme.errorColor,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
   Future<void> _cargarDetalle() async {
     if (!mounted) return;
     setState(() {
@@ -234,6 +307,11 @@ class _EvaluacionDetalleScreenState extends State<EvaluacionDetalleScreen> {
       actions: realizada && _detalle != null
           ? [
               IconButton(
+                icon: const Icon(Icons.edit_outlined),
+                tooltip: 'Editar evaluación',
+                onPressed: () => _editarEvaluacion(),
+              ),
+              IconButton(
                 icon: const Icon(Icons.picture_as_pdf),
                 tooltip: 'Imprimir / Guardar PDF',
                 onPressed: () => _imprimirPdf(
@@ -243,6 +321,11 @@ class _EvaluacionDetalleScreenState extends State<EvaluacionDetalleScreen> {
                   evaluadorNombre: evaluadorNombre,
                   evaluadorCargo: evaluadorCargo,
                 ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.delete_outline),
+                tooltip: 'Eliminar evaluación',
+                onPressed: () => _confirmarEliminar(),
               ),
             ]
           : null,
@@ -405,7 +488,6 @@ class _EvaluacionDetalleScreenState extends State<EvaluacionDetalleScreen> {
               border: TableBorder.all(color: scheme.outlineVariant),
               children: const [
                 TableRow(
-                  decoration: BoxDecoration(color: Color(0xFFE8F5E9)),
                   children: [
                     Padding(padding: EdgeInsets.all(8), child: Text('1', style: TextStyle(fontWeight: FontWeight.bold))),
                     Padding(padding: EdgeInsets.all(8), child: Text('Bajo Rendimiento - No cumple con lo esperado o presenta dificultades.')),

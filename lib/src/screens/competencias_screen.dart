@@ -380,12 +380,12 @@ class _CompetenciasScreenState extends State<CompetenciasScreen> {
                             ),
                           ),
                           const SizedBox(width: 12),
-                          OutlinedButton.icon(
+                          FilledButton.tonalIcon(
                             onPressed: _gestionarCatalogo,
-                            icon: const Icon(Icons.list_alt, size: 20),
+                            icon: const Icon(Icons.apps_outlined, size: 20),
                             label: const Text('Gestionar catálogo'),
-                            style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 14),
+                            style: FilledButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                             ),
                           ),

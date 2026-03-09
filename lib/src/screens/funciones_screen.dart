@@ -544,6 +544,38 @@ class _FuncionesScreenState extends State<FuncionesScreen> {
     }
   }
 
+  Future<void> _gestionarCatalogoFunciones() async {
+    List<Map<String, dynamic>> catalogo = [];
+    try {
+      catalogo = await FuncionesService.getCatalog();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceFirst('Exception: ', '')),
+          backgroundColor: AppTheme.errorColor,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+    if (!mounted) return;
+    await showDialog(
+      context: context,
+      builder: (context) => _CatalogoFuncionesDialog(
+        funciones: catalogo,
+        onCrear: () async {
+          Navigator.of(context).pop();
+          await _mostrarDialogoCrearFuncion(idCargo: null, catalogoVacio: catalogo.isEmpty);
+        },
+        onActualizar: () async {
+          Navigator.of(context).pop();
+          _gestionarCatalogoFunciones();
+        },
+      ),
+    );
+  }
+
   Future<void> _eliminarCargo(Map<String, dynamic> cargo) async {
     final id = cargo['id'] is int ? cargo['id'] as int : int.tryParse(cargo['id']?.toString() ?? '');
     if (id == null) return;
@@ -721,20 +753,32 @@ class _FuncionesScreenState extends State<FuncionesScreen> {
                       ] else
                         const SizedBox(height: 16),
                     ],
-                    // Botón Agregar cargo entre buscador y lista
+                    // Botones Agregar cargo y Gestionar catálogo
                     if (!_cargando) ...[
-                      FilledButton.icon(
-                        onPressed: _crearCargo,
-                        icon: const Icon(Icons.add, size: 22),
-                        label: const Text('Agregar cargo'),
-                        style: FilledButton.styleFrom(
-                          backgroundColor: scheme.primary,
-                          foregroundColor: scheme.onPrimary,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: FilledButton.icon(
+                              onPressed: _crearCargo,
+                              icon: const Icon(Icons.add, size: 22),
+                              label: const Text('Agregar cargo'),
+                              style: FilledButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                            ),
                           ),
-                        ),
+                          const SizedBox(width: 12),
+                          FilledButton.tonalIcon(
+                            onPressed: _gestionarCatalogoFunciones,
+                            icon: const Icon(Icons.apps_outlined, size: 20),
+                            label: const Text('Gestionar catálogo'),
+                            style: FilledButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 16),
                     ],
@@ -947,6 +991,202 @@ class _FuncionesScreenState extends State<FuncionesScreen> {
                 ),
               ),
       ),
+    );
+  }
+}
+
+/// Diálogo para gestionar el catálogo de funciones (listar, crear, editar, eliminar).
+class _CatalogoFuncionesDialog extends StatefulWidget {
+  final List<Map<String, dynamic>> funciones;
+  final VoidCallback onCrear;
+  final VoidCallback onActualizar;
+
+  const _CatalogoFuncionesDialog({
+    required this.funciones,
+    required this.onCrear,
+    required this.onActualizar,
+  });
+
+  @override
+  State<_CatalogoFuncionesDialog> createState() => _CatalogoFuncionesDialogState();
+}
+
+class _CatalogoFuncionesDialogState extends State<_CatalogoFuncionesDialog> {
+  late List<Map<String, dynamic>> _lista;
+
+  @override
+  void initState() {
+    super.initState();
+    _lista = List.from(widget.funciones);
+  }
+
+  int? _id(Map<String, dynamic> e) {
+    final v = e['id'];
+    if (v is int) return v;
+    return int.tryParse(v?.toString() ?? '');
+  }
+
+  Future<void> _editar(Map<String, dynamic> fn) async {
+    final id = _id(fn);
+    if (id == null) return;
+    final c = TextEditingController(text: fn['nombre']?.toString() ?? '');
+    final formKey = GlobalKey<FormState>();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Editar función'),
+        content: Form(
+          key: formKey,
+          child: TextFormField(
+            controller: c,
+            decoration: const InputDecoration(labelText: 'Nombre', border: OutlineInputBorder()),
+            validator: (v) => (v == null || v.trim().isEmpty) ? 'Requerido' : null,
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancelar')),
+          FilledButton(
+            onPressed: () {
+              if (formKey.currentState!.validate()) Navigator.of(ctx).pop(true);
+            },
+            child: const Text('Guardar'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    try {
+      await FuncionesService.updateFuncionCatalogo(id, c.text.trim());
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Función actualizada'), backgroundColor: AppTheme.successColor, behavior: SnackBarBehavior.floating),
+      );
+      setState(() {
+        final i = _lista.indexWhere((e) => _id(e) == id);
+        if (i >= 0) _lista[i] = {'id': id, 'nombre': c.text.trim()};
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceFirst('Exception: ', '')),
+          backgroundColor: AppTheme.errorColor,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  Future<void> _eliminar(Map<String, dynamic> fn) async {
+    final id = _id(fn);
+    if (id == null) return;
+    final nombre = fn['nombre']?.toString() ?? 'esta función';
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Eliminar función'),
+        content: Text(
+          '¿Eliminar "$nombre"? No se podrá si está asignada a algún cargo.',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancelar')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppTheme.errorColor),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Eliminar'),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+    try {
+      await FuncionesService.deleteFuncionCatalogo(id);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Función eliminada'), backgroundColor: AppTheme.successColor, behavior: SnackBarBehavior.floating),
+      );
+      setState(() => _lista.removeWhere((e) => _id(e) == id));
+      widget.onActualizar();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceFirst('Exception: ', '')),
+          backgroundColor: AppTheme.errorColor,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return AlertDialog(
+      title: const Text('Catálogo de funciones'),
+      content: SizedBox(
+        width: MediaQuery.of(context).size.width * 0.6,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            FilledButton.icon(
+              onPressed: () {
+                Navigator.of(context).pop();
+                widget.onCrear();
+              },
+              icon: const Icon(Icons.add, size: 20),
+              label: const Text('Nueva función'),
+              style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 12)),
+            ),
+            const SizedBox(height: 16),
+            Flexible(
+              child: _lista.isEmpty
+                  ? Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Text(
+                        'No hay funciones. Crea una con "Nueva función".',
+                        style: TextStyle(color: scheme.onSurfaceVariant),
+                        textAlign: TextAlign.center,
+                      ),
+                    )
+                  : ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: _lista.length,
+                      itemBuilder: (context, i) {
+                        final fn = _lista[i];
+                        final nombre = fn['nombre']?.toString() ?? 'ID ${fn['id']}';
+                        return Card(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          child: ListTile(
+                            leading: Icon(Icons.work_outline, color: scheme.primary),
+                            title: Text(nombre),
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton(
+                                  icon: Icon(Icons.edit_outlined, size: 20, color: scheme.primary),
+                                  onPressed: () => _editar(fn),
+                                  tooltip: 'Editar',
+                                ),
+                                IconButton(
+                                  icon: Icon(Icons.delete_outline, size: 20, color: scheme.error),
+                                  onPressed: () => _eliminar(fn),
+                                  tooltip: 'Eliminar',
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cerrar')),
+      ],
     );
   }
 }
