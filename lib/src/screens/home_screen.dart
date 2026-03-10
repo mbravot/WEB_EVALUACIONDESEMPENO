@@ -406,11 +406,14 @@ class _HomeScreenState extends State<HomeScreen> {
               elevation: 2,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               child: InkWell(
-                onTap: () {
-                  Navigator.push(
+                onTap: () async {
+                  final actualizado = await Navigator.push<bool>(
                     context,
                     MaterialPageRoute(builder: (_) => const EvaluadorScreen()),
                   );
+                  if (actualizado == true) {
+                    _cargarEstadisticasEvaluaciones();
+                  }
                 },
                 borderRadius: BorderRadius.circular(12),
                 child: Padding(
@@ -600,19 +603,21 @@ class _HomeScreenState extends State<HomeScreen> {
           ListTile(
             leading: const Icon(Icons.assignment, color: AppTheme.primaryColor),
             title: const Text('Mis Evaluaciones'),
-            onTap: () {
-              Navigator.pop(context);
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const EvaluadorScreen()),
-              );
-            },
+        onTap: () async {
+          Navigator.pop(context);
+          final actualizado = await Navigator.push<bool>(
+            context,
+            MaterialPageRoute(builder: (_) => const EvaluadorScreen()),
+          );
+          if (actualizado == true) {
+            _cargarEstadisticasEvaluaciones();
+          }
+        },
           ),
           if (_accesoPantallaPermitido) ...[
             ListTile(
               leading: const Icon(Icons.dashboard, color: AppTheme.primaryColor),
               title: const Text('Dashboard'),
-              subtitle: const Text('Estadísticas globales · Admin/RRHH'),
               onTap: () {
                 Navigator.pop(context);
                 Navigator.push(

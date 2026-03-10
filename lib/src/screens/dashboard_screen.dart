@@ -227,12 +227,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           children: [
                             Icon(Icons.admin_panel_settings_outlined, color: scheme.primary, size: 28),
                             const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                'Estadísticas globales de evaluaciones realizadas. Solo visible para Admin/RRHH.',
-                                style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant),
-                              ),
-                            ),
                           ],
                         ),
                       ),

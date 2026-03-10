@@ -3,6 +3,7 @@ import '../theme/app_theme.dart';
 import '../services/evaluador_service.dart';
 import '../widgets/main_scaffold.dart';
 import 'evaluacion_detalle_screen.dart';
+import 'crear_evaluacion_screen.dart';
 
 class EvaluadorScreen extends StatefulWidget {
   const EvaluadorScreen({super.key});
@@ -17,6 +18,7 @@ class _EvaluadorScreenState extends State<EvaluadorScreen> {
   String? _mensajeError;
   final TextEditingController _busquedaController = TextEditingController();
   final FocusNode _busquedaFocus = FocusNode();
+  bool _hayCambios = false;
 
   @override
   void initState() {
@@ -78,14 +80,19 @@ class _EvaluadorScreenState extends State<EvaluadorScreen> {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
 
-    return MainScaffold(
-      title: 'Mis Evaluaciones',
-      onRefresh: _cargarEvaluaciones,
-      drawer: null,
-      body: RefreshIndicator(
+    return WillPopScope(
+      onWillPop: () async {
+        Navigator.of(context).pop(_hayCambios);
+        return false;
+      },
+      child: MainScaffold(
+        title: 'Mis Evaluaciones',
+        onRefresh: _cargarEvaluaciones,
+        drawer: null,
+        body: RefreshIndicator(
         onRefresh: _cargarEvaluaciones,
         color: scheme.primary,
-        child: _cargando
+          child: _cargando
             ? Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -231,6 +238,7 @@ class _EvaluadorScreenState extends State<EvaluadorScreen> {
                   ],
                 ),
               ),
+        ),
       ),
     );
   }
@@ -367,13 +375,16 @@ class _EvaluadorScreenState extends State<EvaluadorScreen> {
                 onPressed: () async {
                   final actualizado = await Navigator.of(context).push<bool>(
                     MaterialPageRoute(
-                      builder: (context) => EvaluacionDetalleScreen(
-                        evaluacion: e,
-                        realizada: realizada,
-                      ),
+                      builder: (context) => realizada
+                          ? EvaluacionDetalleScreen(
+                              evaluacion: e,
+                              realizada: true,
+                            )
+                          : CrearEvaluacionScreen(evaluacion: e),
                     ),
                   );
                   if (actualizado == true && context.mounted) {
+                    _hayCambios = true;
                     _cargarEvaluaciones();
                   }
                 },
