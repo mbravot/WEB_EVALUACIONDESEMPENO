@@ -38,6 +38,32 @@ class EvaluadorService {
     }
   }
 
+  /// GET /api/evaluaciones/estadisticas (opcional)
+  /// Para Admin/RRHH. Devuelve estadísticas globales: total_asignadas, realizadas, pendientes, por_sucursal.
+  /// Si el backend no expone este endpoint (404), retorna null.
+  /// Formato esperado: { "total_asignadas": int, "realizadas": int, "pendientes": int,
+  ///   "por_sucursal": [ { "sucursal": string, "total": int, "realizadas": int, "pendientes": int } ] }
+  static Future<Map<String, dynamic>?> getEstadisticasGlobales() async {
+    final token = await _authService.getToken();
+    if (token == null) return null;
+    final response = await http.get(
+      Uri.parse('${ApiConfig.baseUrl}/evaluaciones/estadisticas'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+    developer.log('GET evaluaciones/estadisticas: ${response.statusCode}');
+    if (response.statusCode != 200) return null;
+    try {
+      final data = json.decode(response.body) as Map<String, dynamic>;
+      return data;
+    } catch (_) {
+      return null;
+    }
+  }
+
   /// GET /api/evaluaciones
   /// Requiere JWT. Para administradores/RRHH: devuelve todas las evaluaciones (sin filtrar por usuario).
   /// Distinto a getMisEvaluaciones(), que solo devuelve las del usuario logueado.

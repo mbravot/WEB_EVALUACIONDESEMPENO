@@ -8,9 +8,11 @@ import 'cambiar_clave_screen.dart';
 import 'cambiar_sucursal_screen.dart';
 import 'evaluador_screen.dart';
 import 'evaluaciones_screen.dart';
+import 'dashboard_screen.dart';
 import 'funciones_screen.dart';
 import 'competencias_screen.dart';
 import '../services/permisos_service.dart';
+import '../services/evaluador_service.dart';
 import '../widgets/sucursal_selector.dart';
 import '../widgets/main_scaffold.dart';
 
@@ -27,15 +29,52 @@ class _HomeScreenState extends State<HomeScreen> {
   /// Permiso id=7 (usuario_dim_permiso): acceso a Consultar evaluaciones, Funciones del cargo, Competencias por cargo.
   bool _accesoPantallaPermitido = false;
 
+  /// Estadísticas del evaluador: evaluaciones asignadas (pendientes + realizadas).
+  int _totalEvaluaciones = 0;
+  int _evaluacionesRealizadas = 0;
+  int _evaluacionesPendientes = 0;
+  bool _cargandoEstadisticas = true;
+  String? _errorEstadisticas;
+
   @override
   void initState() {
     super.initState();
     _cargarPermisoPantalla();
+    _cargarEstadisticasEvaluaciones();
   }
 
   Future<void> _cargarPermisoPantalla() async {
     final permitido = await PermisosService.getAccesoPantalla();
     if (mounted) setState(() => _accesoPantallaPermitido = permitido);
+  }
+
+  Future<void> _cargarEstadisticasEvaluaciones() async {
+    if (!mounted) return;
+    setState(() {
+      _cargandoEstadisticas = true;
+      _errorEstadisticas = null;
+    });
+    try {
+      final lista = await EvaluadorService.getEvaluacionesPendientes();
+      if (!mounted) return;
+      final realizadas = lista.where((e) => e['realizada'] == true).length;
+      setState(() {
+        _totalEvaluaciones = lista.length;
+        _evaluacionesRealizadas = realizadas;
+        _evaluacionesPendientes = lista.length - realizadas;
+        _cargandoEstadisticas = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      // Si el token expiró, cerrar sesión y enviar al login.
+      if (await MainScaffold.handleTokenExpiredIfNeeded(context, e)) {
+        return;
+      }
+      setState(() {
+        _errorEstadisticas = e.toString().replaceFirst('Exception: ', '');
+        _cargandoEstadisticas = false;
+      });
+    }
   }
 
   @override
@@ -178,201 +217,241 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildDashboardContent() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Tarjeta de bienvenida
-          Card(
-            elevation: 4,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
+    final scheme = Theme.of(context).colorScheme;
+    return RefreshIndicator(
+      onRefresh: _cargarEstadisticasEvaluaciones,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Tarjeta de bienvenida
+            Card(
+              elevation: 4,
+              shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
-                gradient: LinearGradient(
-                  colors: [
-                    AppTheme.primaryColor.withOpacity(0.1),
-                    AppTheme.accentColor.withOpacity(0.1),
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.dashboard,
-                        size: 32,
-                        color: AppTheme.primaryColor,
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          'Bienvenido a tu Dashboard',
-                          style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            color: Theme.of(context).colorScheme.onSurface,
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  gradient: LinearGradient(
+                    colors: [
+                      AppTheme.primaryColor.withOpacity(0.1),
+                      AppTheme.accentColor.withOpacity(0.1),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.assignment_outlined,
+                          size: 32,
+                          color: AppTheme.primaryColor,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'Evaluación de Desempeño',
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              color: scheme.onSurface,
+                            ),
                           ),
                         ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Resumen de las evaluaciones que debes realizar como evaluador.',
+                      style: TextStyle(
+                        fontSize: 15,
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+            // Estadísticas de evaluaciones
+            Text(
+              'Mis evaluaciones asignadas',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: scheme.onSurface,
+              ),
+            ),
+            const SizedBox(height: 12),
+            if (_cargandoEstadisticas)
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 32),
+                  child: Column(
+                    children: [
+                      CircularProgressIndicator(color: scheme.primary),
+                      const SizedBox(height: 12),
+                      Text(
+                        'Cargando estadísticas...',
+                        style: TextStyle(color: scheme.onSurfaceVariant),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
-                  Text(
-                    'Esta es tu aplicación base. Aquí puedes agregar las funcionalidades específicas que necesites.',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              )
+            else if (_errorEstadisticas != null)
+              Card(
+                color: scheme.errorContainer,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      Icon(Icons.error_outline, color: scheme.error),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          _errorEstadisticas!,
+                          style: TextStyle(color: scheme.onErrorContainer, fontSize: 14),
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: _cargarEstadisticasEvaluaciones,
+                        child: Text('Reintentar', style: TextStyle(color: scheme.onErrorContainer)),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else ...[
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildStatCard(
+                      'Total asignadas',
+                      '$_totalEvaluaciones',
+                      Icons.people_outline,
+                      AppTheme.primaryColor,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildStatCard(
+                      'Pendientes',
+                      '$_evaluacionesPendientes',
+                      Icons.pending_actions,
+                      AppTheme.warningColor,
                     ),
                   ),
                 ],
               ),
-            ),
-          ),
-          
-          const SizedBox(height: 24),
-          
-          // Sección de estadísticas rápidas
-          const Text(
-            'Estadísticas Rápidas',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 16),
-          
-          Row(
-            children: [
-              Expanded(
-                child: _buildStatCard(
-                  'Total Items',
-                  '0',
-                  Icons.inventory,
-                  AppTheme.primaryColor,
-                ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildStatCard(
+                      'Realizadas',
+                      '$_evaluacionesRealizadas',
+                      Icons.check_circle_outline,
+                      AppTheme.successColor,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildStatCard(
+                      'Avance',
+                      _totalEvaluaciones > 0
+                          ? '${((_evaluacionesRealizadas / _totalEvaluaciones) * 100).round()}%'
+                          : '0%',
+                      Icons.trending_up,
+                      AppTheme.infoColor,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: _buildStatCard(
-                  'Pendientes',
-                  '0',
-                  Icons.pending,
-                  AppTheme.warningColor,
+              if (_totalEvaluaciones > 0) ...[
+                const SizedBox(height: 16),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: LinearProgressIndicator(
+                    value: _totalEvaluaciones > 0 ? _evaluacionesRealizadas / _totalEvaluaciones : 0,
+                    minHeight: 10,
+                    backgroundColor: scheme.surfaceContainerHighest,
+                    valueColor: AlwaysStoppedAnimation<Color>(AppTheme.successColor),
+                  ),
                 ),
-              ),
+              ],
             ],
-          ),
-          
-          const SizedBox(height: 16),
-          
-          Row(
-            children: [
-              Expanded(
-                child: _buildStatCard(
-                  'Completados',
-                  '0',
-                  Icons.check_circle,
-                  AppTheme.successColor,
-                ),
+            const SizedBox(height: 28),
+            // Acción principal
+            Text(
+              'Acciones',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: scheme.onSurface,
               ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: _buildStatCard(
-                  'En Proceso',
-                  '0',
-                  Icons.schedule,
-                  AppTheme.infoColor,
-                ),
-              ),
-            ],
-          ),
-          
-          const SizedBox(height: 32),
-          
-          // Sección de acciones rápidas
-          Text(
-            'Acciones Rápidas',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: Theme.of(context).colorScheme.onSurface,
             ),
-          ),
-          const SizedBox(height: 16),
-          
-          GridView.count(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            crossAxisCount: 2,
-            crossAxisSpacing: 16,
-            mainAxisSpacing: 16,
-            childAspectRatio: 1.5,
-            children: [
-              _buildActionCard(
-                'Nuevo Item',
-                Icons.add,
-                AppTheme.primaryColor,
-                () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Función de nuevo item - Implementar según necesidades'),
-                      duration: Duration(seconds: 2),
-                    ),
+            const SizedBox(height: 12),
+            Card(
+              elevation: 2,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              child: InkWell(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const EvaluadorScreen()),
                   );
                 },
+                borderRadius: BorderRadius.circular(12),
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Row(
+                    children: [
+                      CircleAvatar(
+                        backgroundColor: AppTheme.primaryColor.withOpacity(0.15),
+                        child: Icon(Icons.assignment, color: AppTheme.primaryColor, size: 28),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Mis Evaluaciones',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: scheme.onSurface,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              _evaluacionesPendientes > 0
+                                  ? 'Tienes $_evaluacionesPendientes evaluación(es) pendiente(s)'
+                                  : 'Ver y gestionar tus evaluaciones',
+                              style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Icon(Icons.arrow_forward_ios, size: 16, color: scheme.onSurfaceVariant),
+                    ],
+                  ),
+                ),
               ),
-              _buildActionCard(
-                'Ver Reportes',
-                Icons.assessment,
-                AppTheme.accentColor,
-                () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Función de reportes - Implementar según necesidades'),
-                      duration: Duration(seconds: 2),
-                    ),
-                  );
-                },
-              ),
-              _buildActionCard(
-                'Configuración',
-                Icons.settings,
-                AppTheme.infoColor,
-                () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Función de configuración - Implementar según necesidades'),
-                      duration: Duration(seconds: 2),
-                    ),
-                  );
-                },
-              ),
-              _buildActionCard(
-                'Ayuda',
-                Icons.help,
-                AppTheme.warningColor,
-                () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Función de ayuda - Implementar según necesidades'),
-                      duration: Duration(seconds: 2),
-                    ),
-                  );
-                },
-              ),
-            ],
-          ),
-        ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -458,9 +537,10 @@ class _HomeScreenState extends State<HomeScreen> {
     final authProvider = Provider.of<AuthProvider>(context);
 
     return MainScaffold(
-      title: 'App Base Web',
+      title: 'Inicio',
       onRefresh: () async {
         await authProvider.checkAuthStatus();
+        await _cargarEstadisticasEvaluaciones();
       },
       drawer: _buildDrawer(context, authProvider, themeProvider),
       body: Column(
@@ -529,6 +609,18 @@ class _HomeScreenState extends State<HomeScreen> {
             },
           ),
           if (_accesoPantallaPermitido) ...[
+            ListTile(
+              leading: const Icon(Icons.dashboard, color: AppTheme.primaryColor),
+              title: const Text('Dashboard'),
+              subtitle: const Text('Estadísticas globales · Admin/RRHH'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const DashboardScreen()),
+                );
+              },
+            ),
             ListTile(
               leading: const Icon(Icons.assignment_ind, color: AppTheme.primaryColor),
               title: const Text('Consultar evaluaciones'),

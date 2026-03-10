@@ -129,8 +129,13 @@ class MainScaffold extends StatelessWidget {
           ),
         );
       }
+
     } catch (e) {
-      // Mostrar mensaje de error
+      // Si el token expiró, cerrar sesión y enviar al login.
+      if (await MainScaffold.handleTokenExpiredIfNeeded(context, e)) {
+        return;
+      }
+      // Otros errores: solo mostrar mensaje
       if (context.mounted) {
         final s = Theme.of(context).colorScheme;
         ScaffoldMessenger.of(context).showSnackBar(
@@ -148,6 +153,43 @@ class MainScaffold extends StatelessWidget {
         );
       }
     }
+  }
+
+  /// Manejo centralizado cuando el backend responde que el token ha expirado.
+  /// Devuelve true si ya se manejó el error y no hay que seguir procesándolo.
+  static Future<bool> handleTokenExpiredIfNeeded(
+    BuildContext context,
+    Object error,
+  ) async {
+    final message = error.toString().toLowerCase();
+    if (!message.contains('token expirado') &&
+        !message.contains('token_expirado') &&
+        !message.contains('jwt expired') &&
+        !message.contains('token has expired')) {
+      return false;
+    }
+
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final scheme = Theme.of(context).colorScheme;
+
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Tu sesión ha expirado. Inicia sesión nuevamente.'),
+          backgroundColor: scheme.error,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
+
+    await authProvider.logout();
+    if (context.mounted) {
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+        (route) => false,
+      );
+    }
+    return true;
   }
 
   @override
