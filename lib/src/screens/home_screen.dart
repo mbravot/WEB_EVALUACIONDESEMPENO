@@ -623,7 +623,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (_) => const DashboardScreen()),
-                );
+                ).then((_) {
+                  if (mounted) _cargarEstadisticasEvaluaciones();
+                });
               },
             ),
             ListTile(
@@ -634,7 +636,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (_) => const EvaluacionesScreen()),
-                );
+                ).then((_) {
+                  if (mounted) _cargarEstadisticasEvaluaciones();
+                });
               },
             ),
             ListTile(

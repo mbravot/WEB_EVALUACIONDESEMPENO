@@ -52,6 +52,21 @@ class _CrearEvaluacionScreenState extends State<CrearEvaluacionScreen> {
   List<Map<String, dynamic>> _planTrabajo = [];
   Map<String, dynamic>? _user;
 
+  /// Opciones para asociar el plan de trabajo a una función o competencia (solo títulos).
+  /// El índice de la lista se envía como `aspectosamejorar` (int o null).
+  List<String> get _aspectosOpcionesLabels {
+    final labels = <String>[];
+    for (final f in _funciones) {
+      final nombre = f['nombre']?.toString() ?? f['nombre_funcion']?.toString() ?? 'Función';
+      labels.add('Función: $nombre');
+    }
+    for (final c in _competencias) {
+      final nombre = c['nombre']?.toString() ?? c['nombre_competencia']?.toString() ?? 'Competencia';
+      labels.add('Competencia: $nombre');
+    }
+    return labels;
+  }
+
   /// Cargos y sucursal cargados por id para mostrar en datos del evaluado.
   String? _cargoEvaluadoNombre;
   String? _cargoEvaluadorNombre;
@@ -67,16 +82,18 @@ class _CrearEvaluacionScreenState extends State<CrearEvaluacionScreen> {
       final pt = widget.evaluacion['plan_trabajo'] as List;
       for (final p in pt) {
         final m = p is Map ? Map<String, dynamic>.from(p as Map) : <String, dynamic>{};
+        final asp = m['aspectosamejorar'];
+        final aspectosamejorar = asp is int ? asp : (asp is num ? (asp as num).toInt() : int.tryParse(asp?.toString().trim() ?? ''));
         _planTrabajo.add({
           'objetivo': m['objetivo']?.toString() ?? '',
           'accionesesperadas': m['accionesesperadas']?.toString() ?? '',
-          'seguimiento': m['seguimiento']?.toString() ?? '',
+          'aspectosamejorar': aspectosamejorar,
           'fechalimitetermino': m['fechalimitetermino']?.toString() ?? '',
         });
       }
     }
     if (_planTrabajo.isEmpty) {
-      _planTrabajo.add({'objetivo': '', 'accionesesperadas': '', 'seguimiento': '', 'fechalimitetermino': ''});
+      _planTrabajo.add({'objetivo': '', 'accionesesperadas': '', 'aspectosamejorar': null, 'fechalimitetermino': ''});
     }
     if (_esEdicion) {
       final fStr = widget.evaluacion['fecha']?.toString() ?? '';
@@ -178,6 +195,7 @@ class _CrearEvaluacionScreenState extends State<CrearEvaluacionScreen> {
           return {
             'id_competencianivel': m['id_competencianivel'] ?? m['id'],
             'nombre': m['nombre_competencia']?.toString() ?? m['nombre']?.toString() ?? 'Competencia',
+            'definicion': m['definicion']?.toString(),
             'nota': notaInt,
           };
         }).toList();
@@ -212,6 +230,7 @@ class _CrearEvaluacionScreenState extends State<CrearEvaluacionScreen> {
           return {
             'id_competencianivel': idCn,
             'nombre': nombre,
+            'definicion': e['definicion']?.toString(),
             'nota': null as int?,
           };
         }).toList();
@@ -314,11 +333,20 @@ class _CrearEvaluacionScreenState extends State<CrearEvaluacionScreen> {
           .where((p) =>
               (p['objetivo']?.toString() ?? '').trim().isNotEmpty ||
               (p['accionesesperadas']?.toString() ?? '').trim().isNotEmpty)
-          .map((p) => {
-                'objetivo': (p['objetivo']?.toString() ?? '').trim(),
-                'accionesesperadas': (p['accionesesperadas']?.toString() ?? '').trim(),
-                'seguimiento': (p['seguimiento']?.toString() ?? '').trim(),
-                'fechalimitetermino': (p['fechalimitetermino']?.toString() ?? '').trim(),
+          .map((p) {
+                final a = p['aspectosamejorar'];
+                int? aspectosamejorar;
+                if (a is int) {
+                  aspectosamejorar = a;
+                } else if (a != null && a.toString().trim().isNotEmpty) {
+                  aspectosamejorar = int.tryParse(a.toString().trim());
+                }
+                return {
+                  'objetivo': (p['objetivo']?.toString() ?? '').trim(),
+                  'accionesesperadas': (p['accionesesperadas']?.toString() ?? '').trim(),
+                  'aspectosamejorar': aspectosamejorar,
+                  'fechalimitetermino': (p['fechalimitetermino']?.toString() ?? '').trim(),
+                };
               })
           .toList(),
     };
@@ -692,7 +720,7 @@ class _CrearEvaluacionScreenState extends State<CrearEvaluacionScreen> {
       child: Column(
         children: [
           for (int i = 0; i < _competencias.length; i++) ...[
-            _buildNotaRow(scheme, _competencias, i, 'nombre', 'nota'),
+            _buildNotaRow(scheme, _competencias, i, 'nombre', 'nota', subtitleKey: 'definicion'),
           ],
           const Divider(height: 1),
           Padding(
@@ -713,18 +741,36 @@ class _CrearEvaluacionScreenState extends State<CrearEvaluacionScreen> {
     );
   }
 
-  Widget _buildNotaRow(ColorScheme scheme, List<Map<String, dynamic>> items, int index, String labelKey, String notaKey) {
+  Widget _buildNotaRow(ColorScheme scheme, List<Map<String, dynamic>> items, int index, String labelKey, String notaKey, {String? subtitleKey}) {
     final item = items[index];
     final nota = item[notaKey] as int?;
+    final subtitle = subtitleKey != null ? item[subtitleKey]?.toString() : null;
+    final hasSubtitle = subtitle != null && subtitle.trim().isNotEmpty;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Expanded(
             flex: 2,
-            child: Text(
-              item[labelKey]?.toString() ?? '—',
-              style: TextStyle(fontSize: 14, color: scheme.onSurface),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  item[labelKey]?.toString() ?? '—',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: scheme.onSurface),
+                ),
+                if (hasSubtitle) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle!,
+                    style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ],
             ),
           ),
           SizedBox(
@@ -854,25 +900,66 @@ class _CrearEvaluacionScreenState extends State<CrearEvaluacionScreen> {
           children: [
             Row(
               children: [
-                Text('Objetivo', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12, color: scheme.onSurfaceVariant)),
+                SizedBox(
+                  width: 220,
+                  child: Text('Aspectos a mejorar', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12, color: scheme.onSurfaceVariant)),
+                ),
                 const SizedBox(width: 8),
-                Expanded(child: Text('Acciones esperadas', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12, color: scheme.onSurfaceVariant))),
+                SizedBox(
+                  width: 80,
+                  child: Text('Objetivo', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12, color: scheme.onSurfaceVariant)),
+                ),
                 const SizedBox(width: 8),
-                Text('Seguimiento', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12, color: scheme.onSurfaceVariant)),
+                Expanded(
+                  child: Text('Acciones esperadas', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12, color: scheme.onSurfaceVariant)),
+                ),
                 const SizedBox(width: 8),
-                Text('Fecha límite', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12, color: scheme.onSurfaceVariant)),
+                SizedBox(
+                  width: 120,
+                  child: Text('Fecha límite', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12, color: scheme.onSurfaceVariant)),
+                ),
               ],
             ),
             const SizedBox(height: 8),
             ...List.generate(_planTrabajo.length, (i) {
               final p = _planTrabajo[i];
+              final opciones = _aspectosOpcionesLabels;
+              final int? valorSeleccionado = (p['aspectosamejorar'] is int) ? p['aspectosamejorar'] as int : null;
               return Padding(
                 padding: const EdgeInsets.only(bottom: 8),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     SizedBox(
-                      width: 80,
+                      width: 220,
+                      child: DropdownButtonFormField<int>(
+                        value: (valorSeleccionado != null && valorSeleccionado >= 0 && valorSeleccionado < opciones.length)
+                            ? valorSeleccionado
+                            : null,
+                        decoration: const InputDecoration(
+                          isDense: true,
+                          border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                        ),
+                        isExpanded: true,
+                        hint: const Text('Seleccionar'),
+                        items: [
+                          for (int index = 0; index < opciones.length; index++)
+                            DropdownMenuItem<int>(
+                              value: index,
+                              child: Text(opciones[index]),
+                            ),
+                        ],
+                        onChanged: (v) {
+                          setState(() {
+                            p['aspectosamejorar'] = v;
+                          });
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    SizedBox(
+                      width: 220,
                       child: TextFormField(
                         initialValue: p['objetivo']?.toString(),
                         decoration: const InputDecoration(isDense: true, border: OutlineInputBorder()),
@@ -889,16 +976,7 @@ class _CrearEvaluacionScreenState extends State<CrearEvaluacionScreen> {
                     ),
                     const SizedBox(width: 8),
                     SizedBox(
-                      width: 80,
-                      child: TextFormField(
-                        initialValue: p['seguimiento']?.toString(),
-                        decoration: const InputDecoration(isDense: true, border: OutlineInputBorder()),
-                        onChanged: (v) => p['seguimiento'] = v,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    SizedBox(
-                      width: 120,
+                      width: 220,
                       child: InkWell(
                         onTap: () async {
                           final str = p['fechalimitetermino']?.toString().trim() ?? '';
@@ -947,7 +1025,7 @@ class _CrearEvaluacionScreenState extends State<CrearEvaluacionScreen> {
             }),
             TextButton.icon(
               onPressed: () => setState(() {
-                _planTrabajo.add({'objetivo': '', 'accionesesperadas': '', 'seguimiento': '', 'fechalimitetermino': ''});
+                _planTrabajo.add({'objetivo': '', 'accionesesperadas': '', 'aspectosamejorar': null, 'fechalimitetermino': ''});
               }),
               icon: const Icon(Icons.add),
               label: const Text('Agregar objetivo'),

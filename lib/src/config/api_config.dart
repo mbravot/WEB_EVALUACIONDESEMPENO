@@ -4,7 +4,6 @@ class ApiConfig {
   ApiConfig._();
 
   /// URL base de la API (sin barra final).
-  /// Producción: https://api-evaluaciondesempeno-927498545444.us-central1.run.app
   //static const String baseUrl = 'http://192.168.1.196:5000/api';
   static const String baseUrl = 'https://api-evaluaciondesempeno-927498545444.us-central1.run.app/api';
 

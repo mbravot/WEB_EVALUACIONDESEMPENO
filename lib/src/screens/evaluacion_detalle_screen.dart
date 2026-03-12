@@ -11,17 +11,21 @@ import 'crear_evaluacion_screen.dart';
 /// Recibe los datos del colaborador y el estado [realizada].
 /// Si [realizada] y [detallePrecargado] es null, carga el detalle desde GET /api/evaluador/mis-evaluaciones.
 /// Si [detallePrecargado] no es null (p. ej. desde GET /api/evaluaciones), se usa directamente.
+/// Si [permisoAdminEditarEliminar] es true (p. ej. desde Consultar evaluaciones / RRHH), cualquier usuario con acceso puede editar y eliminar.
 class EvaluacionDetalleScreen extends StatefulWidget {
   final Map<String, dynamic> evaluacion;
   final bool realizada;
   /// Si se pasa, no se llama a mis-evaluaciones; se usa este mapa como detalle (p. ej. desde "Todas las evaluaciones").
   final Map<String, dynamic>? detallePrecargado;
+  /// true cuando se abre desde "Consultar evaluaciones" (administrador RRHH): se muestran siempre Editar y Eliminar para cualquier evaluación.
+  final bool permisoAdminEditarEliminar;
 
   const EvaluacionDetalleScreen({
     super.key,
     required this.evaluacion,
     required this.realizada,
     this.detallePrecargado,
+    this.permisoAdminEditarEliminar = false,
   });
 
   @override
@@ -313,7 +317,7 @@ class _EvaluacionDetalleScreenState extends State<EvaluacionDetalleScreen> {
     return MainScaffold(
       title: realizada ? 'Ver evaluación' : 'Realizar evaluación',
       drawer: null,
-      actions: realizada && _detalle != null
+      actions: (realizada && _detalle != null) || (widget.permisoAdminEditarEliminar && _detalle != null)
           ? [
               IconButton(
                 icon: const Icon(Icons.edit_outlined),
@@ -343,7 +347,7 @@ class _EvaluacionDetalleScreenState extends State<EvaluacionDetalleScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (realizada && _detalle != null) ...[
+            if ((realizada || widget.permisoAdminEditarEliminar) && _detalle != null) ...[
               _buildHeader(scheme, _detalle!['fecha']?.toString() ?? '—'),
               _buildSectionTitle('I  DATOS DEL EVALUADO'),
               _buildDatosTable(scheme, {
@@ -549,10 +553,31 @@ class _EvaluacionDetalleScreenState extends State<EvaluacionDetalleScreen> {
         : <Map<String, dynamic>>[];
     final notafinal = d['notafinal'];
     final factorbono = d['factorbono'];
-    final numNota = notafinal is num ? (notafinal as num).toDouble() : null;
-    final numFactor = factorbono is num ? (factorbono as num).toDouble() : null;
+    double? numNota;
+    if (notafinal is num) {
+      numNota = (notafinal as num).toDouble();
+    } else if (notafinal != null) {
+      numNota = double.tryParse(notafinal.toString().trim());
+    }
+    double? numFactor;
+    if (factorbono is num) {
+      numFactor = (factorbono as num).toDouble();
+    } else if (factorbono != null) {
+      numFactor = double.tryParse(factorbono.toString().trim());
+    }
     final comentarioEval = d['comentarioevaluador']?.toString();
     final comentarioEvalado = d['comentarioevaluado']?.toString();
+
+    // Etiquetas para Aspectos a mejorar (mapean el índice guardado a nombres de funciones/competencias).
+    final aspectosLabels = <String>[];
+    for (final f in funciones) {
+      final nombre = f['nombre']?.toString() ?? f['nombre_funcion']?.toString() ?? 'Función';
+      aspectosLabels.add('Función: $nombre');
+    }
+    for (final c in competencias) {
+      final nombre = c['nombre']?.toString() ?? c['nombre_competencia']?.toString() ?? 'Competencia';
+      aspectosLabels.add('Competencia: $nombre');
+    }
 
     double? promedioFunc = funciones.isNotEmpty
         ? funciones.fold<double>(0, (s, e) {
@@ -622,24 +647,45 @@ class _EvaluacionDetalleScreenState extends State<EvaluacionDetalleScreen> {
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             child: Column(
               children: [
-                ...competencias.map((c) => Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            flex: 2,
-                            child: Text(
-                              c['nombre_competencia']?.toString() ?? c['nombre']?.toString() ?? '—',
-                              style: TextStyle(fontSize: 14, color: scheme.onSurface),
+                ...competencias.map((c) {
+                      final nombreComp = c['nombre_competencia']?.toString() ?? c['nombre']?.toString() ?? '—';
+                      final defComp = c['definicion']?.toString();
+                      final hasDef = defComp != null && defComp.trim().isNotEmpty;
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              flex: 2,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    nombreComp,
+                                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: scheme.onSurface),
+                                  ),
+                                  if (hasDef) ...[
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      defComp!,
+                                      style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
+                                ],
+                              ),
                             ),
-                          ),
-                          Text(
-                            '${c['nota'] ?? '—'}',
-                            style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: scheme.onSurface),
-                          ),
-                        ],
-                      ),
-                    )),
+                            Text(
+                              '${c['nota'] ?? '—'}',
+                              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: scheme.onSurface),
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
                 const Divider(height: 1),
                 if (promedioComp != null)
                   Padding(
@@ -746,7 +792,7 @@ class _EvaluacionDetalleScreenState extends State<EvaluacionDetalleScreen> {
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 8),
                       child: Text(
-                        numFactor != null ? numFactor.toStringAsFixed(numFactor == numFactor.roundToDouble() ? 0 : 1) : '—',
+                        numFactor != null ? numFactor.toStringAsFixed(1) : '—',
                         style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: scheme.onSurface),
                       ),
                     ),
@@ -756,19 +802,23 @@ class _EvaluacionDetalleScreenState extends State<EvaluacionDetalleScreen> {
             ),
           ),
         ),
-        if (planTrabajo.isNotEmpty) ...[
-          _buildSectionTitle('VIII  PLAN DE TRABAJO'),
-          Card(
-            elevation: 1,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                children: [
+        _buildSectionTitle('VIII  PLAN DE TRABAJO'),
+        Card(
+          elevation: 1,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              children: [
                   Row(
                     children: [
                       SizedBox(
-                        width: 80,
+                        width: 220,
+                        child: Text('Aspectos a mejorar', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12, color: scheme.onSurfaceVariant)),
+                      ),
+                      const SizedBox(width: 8),
+                      SizedBox(
+                        width: 220,
                         child: Text('Objetivo', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12, color: scheme.onSurfaceVariant)),
                       ),
                       const SizedBox(width: 8),
@@ -776,48 +826,64 @@ class _EvaluacionDetalleScreenState extends State<EvaluacionDetalleScreen> {
                           child: Text('Acciones esperadas', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12, color: scheme.onSurfaceVariant))),
                       const SizedBox(width: 8),
                       SizedBox(
-                        width: 80,
-                        child: Text('Seguimiento', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12, color: scheme.onSurfaceVariant)),
-                      ),
-                      const SizedBox(width: 8),
-                      SizedBox(
-                        width: 100,
+                        width: 120,
                         child: Text('Fecha límite', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12, color: scheme.onSurfaceVariant)),
                       ),
                     ],
                   ),
                   const SizedBox(height: 8),
-                  ...planTrabajo.map((p) => Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            SizedBox(
-                              width: 80,
-                              child: Text(p['objetivo']?.toString() ?? '—', style: TextStyle(fontSize: 13, color: scheme.onSurface)),
+                  if (planTrabajo.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    child: Text('Sin objetivos registrados', style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant, fontStyle: FontStyle.italic)),
+                  )
+                else
+                  ...planTrabajo.map((p) {
+                    final idxRaw = p['aspectosamejorar'];
+                    int? idx;
+                    if (idxRaw is int) {
+                      idx = idxRaw;
+                    } else if (idxRaw != null) {
+                      idx = int.tryParse(idxRaw.toString());
+                    }
+                    String label = '—';
+                    if (idx != null && idx >= 0 && idx < aspectosLabels.length) {
+                      label = aspectosLabels[idx];
+                    }
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SizedBox(
+                            width: 220,
+                            child: Text(
+                              label,
+                              style: TextStyle(fontSize: 13, color: scheme.onSurface),
                             ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(p['accionesesperadas']?.toString() ?? '—', style: TextStyle(fontSize: 13, color: scheme.onSurface)),
-                            ),
-                            const SizedBox(width: 8),
-                            SizedBox(
-                              width: 80,
-                              child: Text(p['seguimiento']?.toString() ?? '—', style: TextStyle(fontSize: 13, color: scheme.onSurface)),
-                            ),
-                            const SizedBox(width: 8),
-                            SizedBox(
-                              width: 100,
-                              child: Text(p['fechalimitetermino']?.toString() ?? '—', style: TextStyle(fontSize: 13, color: scheme.onSurface)),
-                            ),
-                          ],
-                        ),
-                      )),
-                ],
-              ),
+                          ),
+                          const SizedBox(width: 8),
+                          SizedBox(
+                            width: 220,
+                            child: Text(p['objetivo']?.toString() ?? '—', style: TextStyle(fontSize: 13, color: scheme.onSurface)),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(p['accionesesperadas']?.toString() ?? '—', style: TextStyle(fontSize: 13, color: scheme.onSurface)),
+                          ),
+                          const SizedBox(width: 8),
+                          SizedBox(
+                            width: 120,
+                            child: Text(p['fechalimitetermino']?.toString() ?? '—', style: TextStyle(fontSize: 13, color: scheme.onSurface)),
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
+              ],
             ),
           ),
-        ],
+        ),
         _buildSectionTitle('IX  FIRMAS DE PARTICIPACIÓN'),
         Card(
           elevation: 1,

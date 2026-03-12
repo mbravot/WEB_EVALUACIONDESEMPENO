@@ -26,8 +26,20 @@ Future<Uint8List> generarPdfEvaluacion({
   final planTrabajo = planRaw is List
       ? (planRaw).map((e) => Map<String, dynamic>.from(e is Map ? e as Map : <String, dynamic>{})).toList()
       : <Map<String, dynamic>>[];
-  final numNota = detalle['notafinal'] is num ? (detalle['notafinal'] as num).toDouble() : null;
-  final numFactor = detalle['factorbono'] is num ? (detalle['factorbono'] as num).toDouble() : null;
+  double? numNota;
+  final nf = detalle['notafinal'];
+  if (nf is num) {
+    numNota = (nf as num).toDouble();
+  } else if (nf != null) {
+    numNota = double.tryParse(nf.toString().trim());
+  }
+  double? numFactor;
+  final fb = detalle['factorbono'];
+  if (fb is num) {
+    numFactor = (fb as num).toDouble();
+  } else if (fb != null) {
+    numFactor = double.tryParse(fb.toString().trim());
+  }
   final comentarioEval = detalle['comentarioevaluador']?.toString() ?? '';
   final comentarioEvalado = detalle['comentarioevaluado']?.toString() ?? '';
   double? promFunc = funciones.isNotEmpty
@@ -84,13 +96,20 @@ Future<Uint8List> generarPdfEvaluacion({
             style: const pw.TextStyle(fontSize: 9),
           ),
         ),
-        if (funciones.isNotEmpty) ...[
-          pw.SizedBox(height: 12),
-          _sectionTitle('IV  EVALUACIÓN FUNCIONES DEL CARGO (70%)'),
-          pw.Table(
-            border: pw.TableBorder.all(color: PdfColors.grey400),
-            columnWidths: {0: const pw.FlexColumnWidth(4), 1: const pw.FlexColumnWidth(1)},
-            children: [
+        pw.SizedBox(height: 12),
+        _sectionTitle('IV  EVALUACIÓN FUNCIONES DEL CARGO (70%)'),
+        pw.Table(
+          border: pw.TableBorder.all(color: PdfColors.grey400),
+          columnWidths: {0: const pw.FlexColumnWidth(4), 1: const pw.FlexColumnWidth(1)},
+          children: [
+            if (funciones.isEmpty)
+              pw.TableRow(
+                children: [
+                  pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text('—', style: const pw.TextStyle(fontSize: 9))),
+                  pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text('Sin datos', style: pw.TextStyle(fontSize: 9, color: PdfColors.grey600))),
+                ],
+              )
+            else ...[
               for (final f in funciones)
                 pw.TableRow(
                   children: [
@@ -100,7 +119,7 @@ Future<Uint8List> generarPdfEvaluacion({
                     ),
                     pw.Padding(
                       padding: const pw.EdgeInsets.all(6),
-                      child: pw.Text('${f['nota'] ?? '—'}', style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+                      child: pw.Text(_notaPdf(f['nota']), style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
                     ),
                   ],
                 ),
@@ -119,25 +138,47 @@ Future<Uint8List> generarPdfEvaluacion({
                   ],
                 ),
             ],
-          ),
-        ],
-        if (competencias.isNotEmpty) ...[
-          pw.SizedBox(height: 12),
-          _sectionTitle('V  EVALUACIÓN DE COMPETENCIAS (30%)'),
-          pw.Table(
-            border: pw.TableBorder.all(color: PdfColors.grey400),
-            columnWidths: {0: const pw.FlexColumnWidth(4), 1: const pw.FlexColumnWidth(1)},
-            children: [
+          ],
+        ),
+        pw.SizedBox(height: 12),
+        _sectionTitle('V  EVALUACIÓN DE COMPETENCIAS (30%)'),
+        pw.Table(
+          border: pw.TableBorder.all(color: PdfColors.grey400),
+          columnWidths: {0: const pw.FlexColumnWidth(4), 1: const pw.FlexColumnWidth(1)},
+          children: [
+            if (competencias.isEmpty)
+              pw.TableRow(
+                children: [
+                  pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text('—', style: const pw.TextStyle(fontSize: 9))),
+                  pw.Padding(padding: const pw.EdgeInsets.all(6), child: pw.Text('Sin datos', style: pw.TextStyle(fontSize: 9, color: PdfColors.grey600))),
+                ],
+              )
+            else ...[
               for (final c in competencias)
                 pw.TableRow(
                   children: [
                     pw.Padding(
                       padding: const pw.EdgeInsets.all(6),
-                      child: pw.Text(c['nombre_competencia']?.toString() ?? c['nombre']?.toString() ?? '—', style: const pw.TextStyle(fontSize: 9)),
+                      child: pw.Column(
+                        crossAxisAlignment: pw.CrossAxisAlignment.start,
+                        mainAxisSize: pw.MainAxisSize.min,
+                        children: [
+                          pw.Text(c['nombre_competencia']?.toString() ?? c['nombre']?.toString() ?? '—', style: const pw.TextStyle(fontSize: 9)),
+                          if (c['definicion'] != null && (c['definicion'] as String).trim().isNotEmpty) ...[
+                            pw.SizedBox(height: 2),
+                            pw.Text(
+                              (c['definicion'] as String).trim(),
+                              style: pw.TextStyle(fontSize: 8, color: PdfColors.grey700),
+                              maxLines: 2,
+                              overflow: pw.TextOverflow.clip,
+                            ),
+                          ],
+                        ],
+                      ),
                     ),
                     pw.Padding(
                       padding: const pw.EdgeInsets.all(6),
-                      child: pw.Text('${c['nota'] ?? '—'}', style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
+                      child: pw.Text(_notaPdf(c['nota']), style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
                     ),
                   ],
                 ),
@@ -156,8 +197,8 @@ Future<Uint8List> generarPdfEvaluacion({
                   ],
                 ),
             ],
-          ),
-        ],
+          ],
+        ),
         pw.SizedBox(height: 12),
         _sectionTitle('VI  COMENTARIOS'),
         pw.Container(
@@ -197,43 +238,51 @@ Future<Uint8List> generarPdfEvaluacion({
             mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
             children: [
               pw.Text('Cantidad de rentas máximas', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
-              pw.Text(numFactor?.toStringAsFixed(1) ?? '—', style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold)),
+              pw.Text(numFactor != null ? numFactor.toStringAsFixed(1) : '—', style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold)),
             ],
           ),
         ),
-        if (planTrabajo.isNotEmpty) ...[
-          pw.SizedBox(height: 12),
-          _sectionTitle('VIII  PLAN DE TRABAJO'),
-          pw.Table(
-            border: pw.TableBorder.all(color: PdfColors.grey400),
-            columnWidths: {
-              0: const pw.FlexColumnWidth(1.2),
-              1: const pw.FlexColumnWidth(2),
-              2: const pw.FlexColumnWidth(1),
-              3: const pw.FlexColumnWidth(1.2),
-            },
-            children: [
+        pw.SizedBox(height: 12),
+        _sectionTitle('VIII  PLAN DE TRABAJO'),
+        pw.Table(
+          border: pw.TableBorder.all(color: PdfColors.grey400),
+          columnWidths: {
+            0: const pw.FlexColumnWidth(1.2),
+            1: const pw.FlexColumnWidth(2),
+            2: const pw.FlexColumnWidth(1),
+            3: const pw.FlexColumnWidth(1.2),
+          },
+          children: [
+            pw.TableRow(
+              decoration: const pw.BoxDecoration(color: PdfColors.grey300),
+              children: [
+                _cell('Aspectos a mejorar', bold: true),
+                _cell('Objetivo', bold: true),
+                _cell('Acciones esperadas', bold: true),
+                _cell('Fecha límite', bold: true),
+              ],
+            ),
+            if (planTrabajo.isEmpty)
               pw.TableRow(
-                decoration: const pw.BoxDecoration(color: PdfColors.grey300),
                 children: [
-                  _cell('Objetivo', bold: true),
-                  _cell('Acciones esperadas', bold: true),
-                  _cell('Seguimiento', bold: true),
-                  _cell('Fecha límite', bold: true),
+                  _cell('—'),
+                  _cell('Sin objetivos registrados'),
+                  _cell('—'),
+                  _cell('—'),
                 ],
-              ),
+              )
+            else
               for (final p in planTrabajo)
                 pw.TableRow(
                   children: [
+                    _cell(p['aspectosamejorar'] != null ? p['aspectosamejorar'].toString() : '—'),
                     _cell(p['objetivo']?.toString() ?? '—'),
                     _cell(p['accionesesperadas']?.toString() ?? '—'),
-                    _cell(p['seguimiento']?.toString() ?? '—'),
                     _cell(p['fechalimitetermino']?.toString() ?? '—'),
                   ],
                 ),
-            ],
-          ),
-        ],
+          ],
+        ),
         pw.SizedBox(height: 12),
         _sectionTitle('IX  FIRMAS DE PARTICIPACIÓN'),
         pw.Row(
@@ -293,6 +342,13 @@ pw.Widget _tablaDatos(Map<String, String> rows) {
         ),
     ],
   );
+}
+
+String _notaPdf(dynamic nota) {
+  if (nota == null) return '—';
+  if (nota is num) return (nota as num).toDouble().toStringAsFixed(2);
+  final n = double.tryParse(nota.toString().trim());
+  return n != null ? n.toStringAsFixed(2) : nota.toString();
 }
 
 pw.Widget _cell(String text, {bool bold = false}) {

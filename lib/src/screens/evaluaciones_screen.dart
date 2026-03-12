@@ -297,23 +297,31 @@ class _EvaluacionesScreenState extends State<EvaluacionesScreen> {
     final fecha = e['fecha']?.toString() ?? '—';
     final sucursal = (e['sucursal'] ?? e['sucursal_ubicacion'])?.toString();
     final cargoEvaluado = e['cargo_evaluado']?.toString();
-    final notafinal = e['notafinal'];
+    final notafinalRaw = e['notafinal'];
+    double? notafinalNum;
+    if (notafinalRaw is num) {
+      notafinalNum = (notafinalRaw as num).toDouble();
+    } else if (notafinalRaw != null) {
+      notafinalNum = double.tryParse(notafinalRaw.toString().trim());
+    }
 
     return Card(
       elevation: 2,
       margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: InkWell(
-        onTap: () {
-          Navigator.of(context).push(
+        onTap: () async {
+          final eliminada = await Navigator.of(context).push<bool>(
             MaterialPageRoute(
               builder: (context) => EvaluacionDetalleScreen(
                 evaluacion: e,
                 realizada: true,
                 detallePrecargado: e,
+                permisoAdminEditarEliminar: true,
               ),
             ),
           );
+          if (eliminada == true && mounted) _cargar();
         },
         borderRadius: BorderRadius.circular(12),
         child: Padding(
@@ -345,7 +353,7 @@ class _EvaluacionesScreenState extends State<EvaluacionesScreen> {
                       ],
                     ),
                   ),
-                  if (notafinal != null)
+                  if (notafinalNum != null)
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                       decoration: BoxDecoration(
@@ -353,7 +361,7 @@ class _EvaluacionesScreenState extends State<EvaluacionesScreen> {
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
-                        notafinal is num ? (notafinal as num).toStringAsFixed(1) : notafinal.toString(),
+                        notafinalNum.toStringAsFixed(2),
                         style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: scheme.onPrimaryContainer),
                       ),
                     ),
